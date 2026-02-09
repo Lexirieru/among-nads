@@ -10,8 +10,9 @@ export function Navbar() {
     return (
         <nav className="retro-panel p-3 flex items-center justify-between">
             <div className="flex items-center gap-6">
-                <Link href="/" className="text-base font-pixel text-shimmer tracking-tight">
-                    AMONG NADS
+                <Link href="/" className="flex items-center gap-2">
+                    <img src="/amongnads_logo_tg.png" alt="Among Nads" className="w-8 h-8 rounded-full" />
+                    <span className="text-base font-pixel text-shimmer tracking-tight">AMONG NADS</span>
                 </Link>
                 <div className="flex items-center gap-1">
                     <Link

@@ -17,7 +17,16 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Among Nads",
-  description: "Among Us meets blockchain",
+  description: "On-chain prediction game on Monad — bet on Crewmates or Impostors",
+  icons: {
+    icon: "/amongnads_logo_tg.png",
+    apple: "/amongnads_logo_tg.png",
+  },
+  openGraph: {
+    title: "Among Nads",
+    description: "On-chain prediction game on Monad — bet on Crewmates or Impostors",
+    images: ["/amongnads_logo_tg.png"],
+  },
 };
 
 export default function RootLayout({
