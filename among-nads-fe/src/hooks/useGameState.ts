@@ -63,8 +63,7 @@ export function useGameState(gameId: string = "sim-1") {
   // Pakai ref agar tidak trigger re-render dan konsisten di semua callback
   const avatarMap = useRef<Record<string, string>>({});
 
-  // Hardcoded backend URL for development
-  const BACKEND_URL = "http://localhost:3001";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
   /** Inject avatar dari local map ke players. Assign baru kalau player belum ada di map. */
   const injectAvatars = useCallback((players: Record<string, Player>): Record<string, Player> => {
