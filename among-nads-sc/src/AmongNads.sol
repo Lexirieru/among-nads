@@ -3,9 +3,12 @@ pragma solidity ^0.8.30;
 
 import "./interfaces/IAmongNads.sol";
 import "./interfaces/IERC20.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * @title AmongNads Prediction Market (v3 — Rolling House Pool)
+ * @title AmongNads Prediction Market (v3 — Rolling House Pool, UUPS Upgradeable)
  * @notice ERC20-based prediction betting with a house-pool (bandar) model.
  *
  * Key features:
@@ -14,6 +17,7 @@ import "./interfaces/IERC20.sol";
  *   - Lazy game creation: seedPool() or first placeBet() auto-creates game.
  *   - Pari-mutuel payout: (userBet / winningPool) * distributable.
  *   - At settlement: fee + seed's winning share return to houseBalance automatically.
+ *   - UUPS upgradeable: owner can upgrade implementation via proxy.
  *
  * Flow:
  *   1. Owner calls deposit(amount) once to fund the house pool
@@ -24,7 +28,7 @@ import "./interfaces/IERC20.sol";
  *   6. Winners call claimPayout(gameId)
  *   7. Owner calls sweep(amount) to withdraw profit anytime
  */
-contract AmongNads is IAmongNads {
+contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // ── Constants ────────────────────────────────────────────────────────────
 
     /// @notice Minimum bet size: 1 USDC (6 decimals)
@@ -34,9 +38,6 @@ contract AmongNads is IAmongNads {
     uint256 public constant PROTOCOL_FEE_BPS = 500;
 
     // ── State ────────────────────────────────────────────────────────────────
-
-    /// @notice Address that can lock / settle games and configure betToken
-    address public owner;
 
     /// @notice Auto-incrementing game counter. Next game will use this ID.
     uint256 public nextGameId;
@@ -53,18 +54,22 @@ contract AmongNads is IAmongNads {
     /// @notice Per-bettor record: gameId → bettor address → Bet
     mapping(uint256 => mapping(address => Bet)) public bets;
 
-    // ── Constructor ──────────────────────────────────────────────────────────
+    // ── Constructor (disable initializers on implementation) ─────────────────
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        owner = msg.sender;
+        _disableInitializers();
     }
 
-    // ── Modifiers ────────────────────────────────────────────────────────────
+    // ── Initializer ─────────────────────────────────────────────────────────
 
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
-        _;
+    function initialize(address initialOwner) public initializer {
+        __Ownable_init(initialOwner);
     }
+
+    // ── UUPS ────────────────────────────────────────────────────────────────
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     // ── Owner Configuration ─────────────────────────────────────────────────
 
@@ -120,7 +125,7 @@ contract AmongNads is IAmongNads {
         if (houseBalance < amount)
             revert InsufficientHouseBalance(houseBalance, amount);
         houseBalance -= amount;
-        bool ok = betToken.transfer(owner, amount);
+        bool ok = betToken.transfer(owner(), amount);
         if (!ok) revert TransferFailed();
         emit Swept(amount);
     }

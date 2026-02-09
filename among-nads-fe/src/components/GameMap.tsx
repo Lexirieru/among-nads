@@ -137,10 +137,10 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                     <div className="absolute inset-0 bg-slate-900/97 flex flex-col items-center justify-center z-50 animate-in fade-in duration-500 p-4">
                         {/* Winner Banner */}
                         <div className="text-center mb-2">
-                            <div className={`text-[10px] font-bold tracking-widest uppercase mb-1 ${crewWon ? 'text-blue-400' : 'text-red-400'}`}>
+                            <div className={`text-[8px] sm:text-[10px] font-bold tracking-widest uppercase mb-1 ${crewWon ? 'text-blue-400' : 'text-red-400'}`}>
                                 GAME OVER
                             </div>
-                            <h2 className={`text-4xl md:text-6xl font-black uppercase italic drop-shadow-lg ${crewWon ? 'text-blue-400' : 'text-red-500'}`} style={crewWon ? {} : { textShadow: '0 0 20px rgba(239,68,68,0.6)' }}>
+                            <h2 className={`text-2xl sm:text-4xl md:text-6xl font-black uppercase italic drop-shadow-lg ${crewWon ? 'text-blue-400' : 'text-red-500'}`} style={crewWon ? {} : { textShadow: '0 0 20px rgba(239,68,68,0.6)' }}>
                                 {crewWon ? 'CREWMATES WIN' : 'IMPOSTORS WIN'}
                             </h2>
                             <p className="text-slate-500 text-xs mt-2 font-bold">
@@ -157,7 +157,7 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                         </div>
 
                         {/* Player Roster — two columns */}
-                        <div className="flex gap-4 mt-4 w-full max-w-2xl">
+                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 w-full max-w-2xl overflow-y-auto">
                             {/* Crewmates */}
                             <div className="flex-1 bg-slate-950/60 border border-blue-900/40 rounded-xl p-3">
                                 <div className={`text-[10px] font-bold tracking-widest mb-2 text-center uppercase ${crewWon ? 'text-blue-400' : 'text-blue-600'}`}>
@@ -215,11 +215,11 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
 
                     {/* STAGE 2 — Discuss panel */}
                     {meetingStage === 'discuss' && (
-                        <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center animate-in fade-in duration-300 p-4">
+                        <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center animate-in fade-in duration-300 p-2 sm:p-4">
 
                             {/* Header */}
-                            <div className="text-center mb-6">
-                                <h2 className="text-3xl md:text-5xl font-black text-red-500 animate-pulse uppercase italic">
+                            <div className="text-center mb-3 sm:mb-6">
+                                <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-red-500 animate-pulse uppercase italic">
                                     {meetingContext?.bodyFound ? "DEAD BODY REPORTED" : "EMERGENCY MEETING"}
                                 </h2>
                                 {meetingContext?.bodyFound && body && (
@@ -230,20 +230,20 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                                 )}
                             </div>
 
-                            <div className="flex w-full max-w-5xl gap-6 h-[60%]">
+                            <div className="flex flex-col sm:flex-row w-full max-w-5xl gap-3 sm:gap-6 flex-1 min-h-0 overflow-y-auto sm:overflow-visible">
 
                                 {/* LEFT: Player Grid & Voting */}
-                                <div className="flex-1 bg-slate-950/50 rounded-xl border border-slate-700 p-4 overflow-y-auto">
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div className="sm:flex-1 bg-slate-950/50 rounded-xl border border-slate-700 p-2 sm:p-4 overflow-y-auto">
+                                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
                                         {Object.values(players).map((p: any) => {
                                             const hasVoted = meetingContext?.votesReceived && meetingContext.votesReceived[p.id];
                                             return (
-                                                <div key={p.id} className={`flex items-center gap-3 p-2 rounded-lg border ${p.alive ? 'bg-slate-800 border-slate-700' : 'bg-red-900/20 border-red-900/50 opacity-60'}`}>
-                                                    <div className={`w-12 h-12 flex-shrink-0 ${!p.alive ? 'grayscale opacity-60' : ''}`}>
+                                                <div key={p.id} className={`flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg border ${p.alive ? 'bg-slate-800 border-slate-700' : 'bg-red-900/20 border-red-900/50 opacity-60'}`}>
+                                                    <div className={`w-8 h-8 sm:w-12 sm:h-12 flex-shrink-0 ${!p.alive ? 'grayscale opacity-60' : ''}`}>
                                                         <img src={p.avatar || "/characters/molandak-black-tg.png"} alt={p.name} className="w-full h-full object-contain" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="text-xs font-bold truncate text-slate-200">{p.name}</div>
+                                                        <div className="text-[10px] sm:text-xs font-bold truncate text-slate-200">{p.name}</div>
                                                         {hasVoted && (
                                                             <div className="text-[10px] text-green-400 font-bold">VOTED</div>
                                                         )}
@@ -255,7 +255,7 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                                 </div>
 
                                 {/* RIGHT: Discussion Bubbles */}
-                                <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700 p-4 flex flex-col relative overflow-hidden">
+                                <div className="sm:flex-1 bg-slate-800/50 rounded-xl border border-slate-700 p-2 sm:p-4 flex flex-col relative overflow-hidden">
                                     <div className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">DISCUSS!</div>
 
                                     <div className="space-y-3 overflow-y-auto flex-1 flex flex-col justify-end">

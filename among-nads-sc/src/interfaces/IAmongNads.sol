@@ -55,7 +55,6 @@ interface IAmongNads {
 
     // ── Errors ───────────────────────────────────────────────────────────────
 
-    error NotOwner();
     error InvalidGameState(uint256 gameId, GameState current);
     error InvalidGameId(uint256 gameId);
     error BetTokenNotSet();

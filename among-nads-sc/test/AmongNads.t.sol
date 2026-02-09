@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "../src/AmongNads.sol";
 import "../src/MockUSDC.sol";
 import "../src/interfaces/IAmongNads.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract AmongNadsTest is Test {
     AmongNads public game;
@@ -28,7 +30,15 @@ contract AmongNadsTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        game = new AmongNads();
+
+        // Deploy implementation
+        AmongNads impl = new AmongNads();
+
+        // Deploy proxy with initialize() calldata
+        bytes memory initData = abi.encodeCall(AmongNads.initialize, (address(this)));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        game = AmongNads(address(proxy));
+
         game.setBetToken(address(usdc));
 
         // Mint USDC to test accounts and approve
@@ -52,19 +62,78 @@ contract AmongNadsTest is Test {
         game.deposit(USDC_10K);
     }
 
+    // Helper: deploy a fresh proxy (for tests that need a clean instance)
+    function _deployFreshProxy() internal returns (AmongNads) {
+        AmongNads impl = new AmongNads();
+        bytes memory initData = abi.encodeCall(AmongNads.initialize, (address(this)));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        return AmongNads(address(proxy));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ── UUPS Upgrade ──────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+
+    function testUpgrade_OwnerCanUpgrade() public {
+        AmongNads newImpl = new AmongNads();
+        game.upgradeToAndCall(address(newImpl), "");
+        // Should succeed without revert
+    }
+
+    function testUpgrade_NonOwnerReverts() public {
+        AmongNads newImpl = new AmongNads();
+        vm.prank(eve);
+        vm.expectRevert(abi.encodeWithSelector(
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector, eve
+        ));
+        game.upgradeToAndCall(address(newImpl), "");
+    }
+
+    function testUpgrade_PreservesState() public {
+        // Create some state
+        game.seedPool(0, USDC_500, USDC_500);
+        vm.prank(alice);
+        game.placeBet(0, IAmongNads.Team.Crewmates, USDC_10);
+
+        // Upgrade
+        AmongNads newImpl = new AmongNads();
+        game.upgradeToAndCall(address(newImpl), "");
+
+        // Verify state preserved
+        IAmongNads.Game memory g = game.getGame(0);
+        assertEq(g.totalPool, USDC_1000 + USDC_10);
+        assertEq(g.crewmatesPool, USDC_500 + USDC_10);
+        assertEq(g.impostorsPool, USDC_500);
+        assertEq(game.nextGameId(), 1);
+        assertEq(game.houseBalance(), USDC_10K - USDC_1000);
+    }
+
+    function testInitialize_CannotReinitialize() public {
+        vm.expectRevert();
+        game.initialize(eve);
+    }
+
+    function testImplementation_CannotInitialize() public {
+        AmongNads impl = new AmongNads();
+        vm.expectRevert();
+        impl.initialize(address(this));
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // ── setBetToken ──────────────────────────────────────────────────────────
     // ══════════════════════════════════════════════════════════════════════════
 
     function testSetBetToken_Happy() public {
-        AmongNads fresh = new AmongNads();
+        AmongNads fresh = _deployFreshProxy();
         fresh.setBetToken(address(usdc));
         assertEq(address(fresh.betToken()), address(usdc));
     }
 
     function testSetBetToken_OnlyOwner() public {
         vm.prank(eve);
-        vm.expectRevert(IAmongNads.NotOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector, eve
+        ));
         game.setBetToken(address(usdc));
     }
 
@@ -82,12 +151,14 @@ contract AmongNadsTest is Test {
 
     function testDeposit_OnlyOwner() public {
         vm.prank(eve);
-        vm.expectRevert(IAmongNads.NotOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector, eve
+        ));
         game.deposit(USDC_100);
     }
 
     function testDeposit_BetTokenNotSet() public {
-        AmongNads fresh = new AmongNads();
+        AmongNads fresh = _deployFreshProxy();
         vm.expectRevert(IAmongNads.BetTokenNotSet.selector);
         fresh.deposit(USDC_100);
     }
@@ -114,7 +185,9 @@ contract AmongNadsTest is Test {
 
     function testSeedPool_OnlyOwner() public {
         vm.prank(eve);
-        vm.expectRevert(IAmongNads.NotOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector, eve
+        ));
         game.seedPool(0, USDC_500, USDC_500);
     }
 
@@ -150,7 +223,9 @@ contract AmongNadsTest is Test {
 
     function testSweep_OnlyOwner() public {
         vm.prank(eve);
-        vm.expectRevert(IAmongNads.NotOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector, eve
+        ));
         game.sweep(USDC_100);
     }
 
@@ -186,7 +261,7 @@ contract AmongNadsTest is Test {
     }
 
     function testPlaceBet_BetTokenNotSet_Reverts() public {
-        AmongNads fresh = new AmongNads();
+        AmongNads fresh = _deployFreshProxy();
         vm.prank(alice);
         vm.expectRevert(IAmongNads.BetTokenNotSet.selector);
         fresh.placeBet(0, IAmongNads.Team.Crewmates, USDC_10);
@@ -263,7 +338,9 @@ contract AmongNadsTest is Test {
     function testLockGame_OnlyOwner() public {
         game.seedPool(0, USDC_500, USDC_500);
         vm.prank(eve);
-        vm.expectRevert(IAmongNads.NotOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector, eve
+        ));
         game.lockGame(0);
     }
 
@@ -330,7 +407,9 @@ contract AmongNadsTest is Test {
         game.lockGame(0);
 
         vm.prank(eve);
-        vm.expectRevert(IAmongNads.NotOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector, eve
+        ));
         game.settleGame(0, IAmongNads.Team.Crewmates);
     }
 
