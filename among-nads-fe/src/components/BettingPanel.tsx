@@ -531,7 +531,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                     return (
                         <div className="w-full py-2 flex justify-center">
                             <div className="text-[8px] font-pixel text-[#a8d8ea]/40 text-center">
-                                Please Connect Wallet in Navbar ↗
+                                Please Connect Your Wallet
                             </div>
                         </div>
                     );
