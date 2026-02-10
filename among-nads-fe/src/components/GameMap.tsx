@@ -127,72 +127,106 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                 </div>
             )}
 
-            {/* ENDED OVERLAY */}
+            {/* ENDED OVERLAY — Victory Screen */}
             {(phase === 'ENDED' || winner) && (() => {
                 const crewWon = winner?.includes("Crewmates");
-                const crewmates = Object.values(players).filter((p: any) => p.role === 'Crewmate');
-                const impostors = Object.values(players).filter((p: any) => p.role === 'Impostor');
+                // Show only alive winners: crewmates if crew won, impostors if impostors won
+                const winners = Object.values(players).filter((p: any) =>
+                    crewWon
+                        ? p.role === 'Crewmate' && p.alive
+                        : p.role === 'Impostor' && p.alive
+                );
 
                 return (
-                    <div className="absolute inset-0 bg-slate-900/97 flex flex-col items-center justify-center z-50 animate-in fade-in duration-500 p-2 sm:p-4 overflow-y-auto">
-                        {/* Winner Banner */}
-                        <div className="text-center mb-1 sm:mb-2 flex-shrink-0">
-                            <div className={`text-[7px] sm:text-[10px] font-bold tracking-widest uppercase mb-0.5 sm:mb-1 ${crewWon ? 'text-blue-400' : 'text-red-400'}`}>
-                                GAME OVER
-                            </div>
-                            <h2 className={`text-lg sm:text-4xl md:text-6xl font-black uppercase italic drop-shadow-lg ${crewWon ? 'text-blue-400' : 'text-red-500'}`} style={crewWon ? {} : { textShadow: '0 0 20px rgba(239,68,68,0.6)' }}>
-                                {crewWon ? 'CREWMATES WIN' : 'IMPOSTORS WIN'}
-                            </h2>
-                            <p className="text-slate-500 text-[10px] sm:text-xs mt-1 sm:mt-2 font-bold">
-                                {winner === 'Time Limit Reached'
-                                    ? 'The impostors survived long enough.'
-                                    : winner?.includes('Sabotage')
-                                        ? 'Critical sabotage was not repaired in time.'
-                                        : winner?.includes('Tasks')
-                                            ? 'The crew completed all tasks.'
-                                            : crewWon
-                                                ? 'All impostors have been eliminated.'
-                                                : 'The impostors outnumbered the crew.'}
+                    <div className="absolute inset-0 z-50 animate-in fade-in duration-700 overflow-hidden">
+                        {/* Background — victory image with gradient overlay */}
+                        <img
+                            src="/amongnads-victory-tg.png"
+                            alt="Victory"
+                            className="absolute inset-0 w-full h-full object-cover opacity-30"
+                        />
+                        {/* Dark gradient overlay for readability */}
+                        <div className="absolute inset-0" style={{
+                            background: crewWon
+                                ? 'radial-gradient(ellipse at center bottom, rgba(30,58,138,0.7) 0%, rgba(15,23,42,0.95) 70%)'
+                                : 'radial-gradient(ellipse at center bottom, rgba(127,29,29,0.7) 0%, rgba(15,23,42,0.95) 70%)'
+                        }} />
+
+                        {/* Content */}
+                        <div className="relative z-10 flex flex-col items-center justify-center h-full px-4">
+
+                            {/* "VICTORY" title */}
+                            <h1
+                                className={`font-pixel text-2xl sm:text-5xl md:text-7xl font-black uppercase tracking-widest mb-1 sm:mb-2 ${crewWon ? 'text-blue-400' : 'text-red-500'}`}
+                                style={{
+                                    textShadow: crewWon
+                                        ? '0 0 30px rgba(96,165,250,0.8), 0 0 60px rgba(59,130,246,0.4)'
+                                        : '0 0 30px rgba(239,68,68,0.8), 0 0 60px rgba(220,38,38,0.4)',
+                                }}
+                            >
+                                Victory
+                            </h1>
+
+                            {/* Subtitle — who won */}
+                            <p className={`font-pixel text-[7px] sm:text-xs md:text-sm uppercase tracking-[0.2em] mb-4 sm:mb-8 ${crewWon ? 'text-blue-300/80' : 'text-red-300/80'}`}>
+                                {crewWon ? 'Crewmates Win' : 'Impostors Win'}
                             </p>
-                        </div>
 
-                        {/* Player Roster — two columns */}
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 sm:mt-4 w-full max-w-2xl overflow-y-auto max-h-[180px] sm:max-h-none flex-shrink">
-                            {/* Crewmates */}
-                            <div className="flex-1 bg-slate-950/60 border border-blue-900/40 rounded-lg sm:rounded-xl p-2 sm:p-3">
-                                <div className={`text-[8px] sm:text-[10px] font-bold tracking-widest mb-1 sm:mb-2 text-center uppercase ${crewWon ? 'text-blue-400' : 'text-blue-600'}`}>
-                                    Crewmates {crewWon && '— VICTORY'}
-                                </div>
-                                <div className="space-y-1.5">
-                                    {crewmates.map((p: any) => (
-                                        <div key={p.id} className={`flex items-center gap-2 px-2 py-1 rounded-lg ${p.alive ? 'bg-blue-900/20' : 'bg-slate-800/40 opacity-50'}`}>
-                                            <div className={`w-7 h-7 flex-shrink-0 ${!p.alive ? 'grayscale' : ''}`}>
-                                                <img src={p.avatar || '/characters/molandak-black-tg.png'} alt={p.name} className="w-full h-full object-contain" />
-                                            </div>
-                                            <span className="text-xs text-slate-300 truncate">{p.name}</span>
-                                            {!p.alive && <span className="ml-auto text-[9px] text-red-400 font-bold flex-shrink-0">DEAD</span>}
+                            {/* Win reason */}
+                            <p className="text-slate-400 text-[6px] sm:text-[10px] font-pixel mb-3 sm:mb-6 uppercase tracking-wider">
+                                {winner?.includes('Sabotage')
+                                    ? '💥 Critical sabotage was not repaired'
+                                    : winner?.includes('Tasks')
+                                        ? '✅ All tasks completed'
+                                        : winner?.includes('Survived')
+                                            ? '⏱️ Crewmates survived the timer'
+                                            : winner?.includes('Domination')
+                                                ? '🔪 Impostors dominated the crew'
+                                                : crewWon
+                                                    ? '👋 All impostors eliminated'
+                                                    : '💀 The impostors won'}
+                            </p>
+
+                            {/* Surviving winners — character showcase */}
+                            <div className="flex items-end justify-center gap-3 sm:gap-6 md:gap-8">
+                                {winners.map((p: any, idx: number) => (
+                                    <div
+                                        key={p.id}
+                                        className="flex flex-col items-center animate-in slide-in-from-bottom-4 fade-in"
+                                        style={{ animationDelay: `${idx * 150}ms`, animationFillMode: 'both' }}
+                                    >
+                                        {/* Character avatar — large and prominent */}
+                                        <div
+                                            className="w-12 h-12 sm:w-20 sm:h-20 md:w-28 md:h-28 relative"
+                                            style={{
+                                                filter: p.role === 'Impostor'
+                                                    ? 'drop-shadow(0 0 12px rgba(239,68,68,0.7))'
+                                                    : 'drop-shadow(0 0 12px rgba(96,165,250,0.7))',
+                                            }}
+                                        >
+                                            <img
+                                                src={getAvatarSrc(p)}
+                                                alt={p.name}
+                                                className="w-full h-full object-contain"
+                                            />
                                         </div>
-                                    ))}
-                                </div>
+
+                                        {/* Player name — red for impostors */}
+                                        <div className={`mt-1 sm:mt-2 px-1 sm:px-2 py-0.5 rounded font-pixel text-[5px] sm:text-[8px] md:text-[10px] text-center whitespace-nowrap ${
+                                            p.role === 'Impostor'
+                                                ? 'text-red-400 bg-red-900/30 border border-red-800/40'
+                                                : 'text-blue-300 bg-blue-900/30 border border-blue-800/40'
+                                        }`}>
+                                            {p.name}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
-                            {/* Impostors */}
-                            <div className="flex-1 bg-slate-950/60 border border-red-900/40 rounded-lg sm:rounded-xl p-2 sm:p-3">
-                                <div className={`text-[8px] sm:text-[10px] font-bold tracking-widest mb-1 sm:mb-2 text-center uppercase ${!crewWon ? 'text-red-400' : 'text-red-700'}`}>
-                                    Impostors {!crewWon && '— VICTORY'}
-                                </div>
-                                <div className="space-y-1.5">
-                                    {impostors.map((p: any) => (
-                                        <div key={p.id} className={`flex items-center gap-2 px-2 py-1 rounded-lg ${p.alive ? 'bg-red-900/20' : 'bg-slate-800/40 opacity-50'}`}>
-                                            <div className={`w-7 h-7 flex-shrink-0 ${!p.alive ? 'grayscale' : ''}`}>
-                                                <img src={p.avatar || '/characters/molandak-black-tg.png'} alt={p.name} className="w-full h-full object-contain" />
-                                            </div>
-                                            <span className="text-xs text-slate-300 truncate">{p.name}</span>
-                                            {!p.alive && <span className="ml-auto text-[9px] text-red-400 font-bold flex-shrink-0">DEAD</span>}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            {/* "Next game starting..." hint */}
+                            <p className="mt-4 sm:mt-8 text-slate-500 text-[6px] sm:text-[9px] font-pixel animate-pulse">
+                                Next round starting soon...
+                            </p>
                         </div>
                     </div>
                 );
