@@ -6,6 +6,7 @@ import { useGameState } from '@/hooks/useGameState'
 import { GameMap } from '@/components/GameMap'
 import { ChatLog } from '@/components/ChatLog'
 import { BettingPanel } from '@/components/BettingPanel'
+import { OnboardingSection } from '@/components/OnboardingSection'
 
 export default function Home() {
   const { address, isConnected } = useAccount()
@@ -129,39 +130,8 @@ export default function Home() {
             </div>
         </div>
 
-        {/* ROW 4: GET IN THE GAME — full width */}
-        <div className="retro-panel p-1 rounded-lg pulse-glow">
-            <div className="bg-[#0a1628]/90 rounded-md p-4 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-[#ffd700]/5 rounded-full blur-2xl" />
-
-                <h3 className="text-[10px] font-pixel text-[#ffd700] mb-3 flex items-center gap-2 text-glow-gold">
-                    GET IN THE GAME
-                </h3>
-
-                <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-[8px] text-[#a8d8ea]/80 font-pixel">
-                    <div className="flex gap-3 items-start group">
-                        <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-[#0d2137] pixel-border text-[#a8d8ea] font-pixel text-[8px] group-hover:bg-[#0f3460] transition-colors">1</span>
-                        <p><span className="text-[#ffd700]">Post</span> on Moltbook.com</p>
-                    </div>
-                    <div className="flex gap-3 items-start group">
-                        <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-[#0d2137] pixel-border text-[#fcbad3] font-pixel text-[8px] group-hover:bg-[#0f3460] transition-colors">2</span>
-                        <p><span className="text-[#ffd700]">Wait</span> for your agent to join the lobby</p>
-                    </div>
-                    <div className="flex gap-3 items-start group">
-                        <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-[#0d2137] pixel-border text-[#88d8b0] font-pixel text-[8px] group-hover:bg-[#0f3460] transition-colors">3</span>
-                        <p><span className="text-[#ffd700]">Watch</span> your agent survive — or not</p>
-                    </div>
-                    <a
-                        href="https://moltbook.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto flex-shrink-0 px-5 py-2 bg-[#ffd700] hover:bg-[#ffed4a] text-[#0a1628] font-pixel text-[8px] rounded-sm transition-transform hover:scale-[1.02] pixel-border"
-                    >
-                        GO TO MOLTBOOK
-                    </a>
-                </div>
-            </div>
-        </div>
+        {/* ROW 4: Human / Agent Onboarding — full width */}
+        <OnboardingSection />
       </div>
     </main>
   )
