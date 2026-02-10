@@ -85,9 +85,7 @@ class ContractClient {
     const contractAddr = process.env.CONTRACT_ADDRESS;
 
     if (!privateKey || !contractAddr) {
-      throw new Error(
-        "PRIVATE_KEY and CONTRACT_ADDRESS must be set in .env"
-      );
+      throw new Error("PRIVATE_KEY and CONTRACT_ADDRESS must be set in .env");
     }
 
     const account = privateKeyToAccount(privateKey as `0x${string}`);
@@ -109,7 +107,9 @@ class ContractClient {
     this.seedCrewmates = BigInt(process.env.SEED_CREWMATES || "500000000"); // 500e6
     this.seedImpostors = BigInt(process.env.SEED_IMPOSTORS || "500000000"); // 500e6
 
-    console.log(`[ContractClient] Connected to AmongNads @ ${this.contractAddress}`);
+    console.log(
+      `[ContractClient] Connected to AmongNads @ ${this.contractAddress}`,
+    );
   }
 
   /** Returns the on-chain gameId for the current round (null if not yet fetched). */
@@ -129,11 +129,11 @@ class ContractClient {
    * Stores it as currentGameId for broadcast.
    */
   async fetchNextGameId(): Promise<bigint> {
-    const nextId = await this.publicClient.readContract({
+    const nextId = (await this.publicClient.readContract({
       address: this.contractAddress,
       abi: AMONG_NADS_ABI,
       functionName: "nextGameId",
-    }) as bigint;
+    })) as bigint;
 
     this.currentGameId = nextId;
     this._gameOnChain = false;
@@ -162,7 +162,9 @@ class ContractClient {
    * Also lazily creates the game if it doesn't exist yet.
    */
   async seedPool(gameId: bigint): Promise<void> {
-    console.log(`[ContractClient] seedPool(${gameId}, crew=${this.seedCrewmates}, imp=${this.seedImpostors})...`);
+    console.log(
+      `[ContractClient] seedPool(${gameId}, crew=${this.seedCrewmates}, imp=${this.seedImpostors})...`,
+    );
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
       abi: AMONG_NADS_ABI,
@@ -199,7 +201,9 @@ class ContractClient {
       return;
     }
     const teamValue = winner === "Crewmates" ? Team.Crewmates : Team.Impostors;
-    console.log(`[ContractClient] settleGame(${this.currentGameId}, ${winner})...`);
+    console.log(
+      `[ContractClient] settleGame(${this.currentGameId}, ${winner})...`,
+    );
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
       abi: AMONG_NADS_ABI,
@@ -208,7 +212,9 @@ class ContractClient {
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
     this._gameOnChain = false;
-    console.log(`[ContractClient] Game settled — winner: ${winner} (tx: ${hash})`);
+    console.log(
+      `[ContractClient] Game settled — winner: ${winner} (tx: ${hash})`,
+    );
   }
 }
 

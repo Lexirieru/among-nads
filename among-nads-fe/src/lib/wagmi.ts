@@ -1,6 +1,13 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { defineChain } from "viem";
 import { http } from "wagmi";
+import {
+  rabbyWallet,
+  metaMaskWallet,
+  walletConnectWallet,
+  rainbowWallet,
+  injectedWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 
 export const monadTestnet = defineChain({
   id: 10143,
@@ -17,9 +24,11 @@ export const monadTestnet = defineChain({
     default: {
       name: "Monad Explorer",
       url: "https://testnet.monadexplorer.com",
+      apiUrl: "https://testnet.monadexplorer.com/api",
     },
   },
   testnet: true,
+  iconUrl: "https://avatars.githubusercontent.com/u/108920141?s=200&v=4",
 });
 
 export const config = getDefaultConfig({
@@ -29,5 +38,17 @@ export const config = getDefaultConfig({
   transports: {
     [monadTestnet.id]: http(),
   },
-  ssr: true, // If your dApp uses server side rendering (SSR)
+  ssr: true,
+  wallets: [
+    {
+      groupName: "Popular",
+      wallets: [
+        rabbyWallet,
+        metaMaskWallet,
+        rainbowWallet,
+        walletConnectWallet,
+        injectedWallet,
+      ],
+    },
+  ],
 });

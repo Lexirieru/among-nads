@@ -430,9 +430,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                     <div className="text-[8px] font-pixel text-[#a8d8ea]/60">
                         <span className="text-[#ffd700]">{betAmountLabel} USDC</span> on the line
                     </div>
-                    <div className="text-[7px] font-pixel text-[#a8d8ea]/30">
-                        Betting is still open...
-                    </div>
+
                 </div>
                 <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
                     Round #{onChainGameId}
@@ -498,44 +496,47 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
             </div>
 
             {/* Place bet OR Connect Wallet */}
-            {isConnected ? (
-                <>
-                    <button
-                        onClick={handlePlaceBet}
-                        disabled={!bettingOpen || !selectedTeam || !amount || parseFloat(amount) < 1 || isPlacingBet || !onChainGameId}
-                        className="w-full py-2.5 rounded-sm text-[8px] font-pixel uppercase tracking-wider transition-all
-                            bg-[#ff6b6b] hover:bg-[#ff8a8a] text-[#0a1628]
-                            pixel-border
-                            disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        {isApprovePending ? 'Approving USDC...'
-                            : isApproveConfirming ? 'Confirming Approve...'
-                            : isPlaceBetPending ? 'Placing Bet...'
-                            : isPlaceBetConfirming ? 'Confirming Bet...'
-                            : 'Place Bet'}
-                    </button>
-                    {(approveError || placeBetError) && (
-                        <div className="text-[7px] font-pixel text-[#ff6b6b] text-center mt-1 truncate">
-                            {(approveError || placeBetError)?.message?.slice(0, 60)}
+            {/* Place bet OR Connect Wallet */}
+            <ConnectButton.Custom>
+                {({ account, mounted }) => {
+                    const ready = mounted;
+                    const connected = ready && account && account.address;
+
+                    if (connected) {
+                        return (
+                            <>
+                                <button
+                                    onClick={handlePlaceBet}
+                                    disabled={!bettingOpen || !selectedTeam || !amount || parseFloat(amount) < 1 || isPlacingBet || !onChainGameId}
+                                    className="w-full py-2.5 rounded-sm text-[8px] font-pixel uppercase tracking-wider transition-all
+                                        bg-[#ff6b6b] hover:bg-[#ff8a8a] text-[#0a1628]
+                                        pixel-border
+                                        disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    {isApprovePending ? 'Approving USDC...'
+                                        : isApproveConfirming ? 'Confirming Approve...'
+                                        : isPlaceBetPending ? 'Placing Bet...'
+                                        : isPlaceBetConfirming ? 'Confirming Bet...'
+                                        : 'Place Bet'}
+                                </button>
+                                {(approveError || placeBetError) && (
+                                    <div className="text-[7px] font-pixel text-[#ff6b6b] text-center mt-1 truncate">
+                                        {(approveError || placeBetError)?.message?.slice(0, 60)}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    }
+
+                    return (
+                        <div className="w-full py-2 flex justify-center">
+                            <div className="text-[8px] font-pixel text-[#a8d8ea]/40 text-center">
+                                Please Connect Wallet in Navbar ↗
+                            </div>
                         </div>
-                    )}
-                </>
-            ) : (
-                <div className="w-full py-2 flex justify-center">
-                    <ConnectButton.Custom>
-                        {({ openConnectModal, mounted }) => (
-                            <button
-                                onClick={openConnectModal}
-                                disabled={!mounted}
-                                className="w-full py-2.5 rounded-sm text-[8px] font-pixel uppercase tracking-wider transition-all
-                                    bg-[#ffd700] hover:bg-[#ffed4a] text-[#0a1628] pixel-border hover:scale-[1.02]"
-                            >
-                                Connect Wallet to Bet
-                            </button>
-                        )}
-                    </ConnectButton.Custom>
-                </div>
-            )}
+                    );
+                }}
+            </ConnectButton.Custom>
 
             {/* gameId indicator */}
             <div className="mt-3 text-[7px] font-pixel text-[#a8d8ea]/30 text-center">

@@ -28,26 +28,38 @@ export interface Player {
 // in the same room while idle (simulated via taskTicksRemaining countdown).
 
 export interface TaskDef {
-  id: string;           // unique key, e.g. "wires_cafeteria"
-  name: string;         // human-readable label
-  room: RoomType;       // which room the task is located in
+  id: string; // unique key, e.g. "wires_cafeteria"
+  name: string; // human-readable label
+  room: RoomType; // which room the task is located in
 }
 
 const TASK_POOL: TaskDef[] = [
-  { id: "wires_cafeteria",     name: "Fix Wires",          room: RoomType.CAFETERIA },
-  { id: "upload_nav",          name: "Upload Data",        room: RoomType.NAVIGATION },
-  { id: "calibrate_shields",   name: "Calibrate Shields",  room: RoomType.SHIELDS },
-  { id: "refuel_engine",       name: "Refuel Engines",     room: RoomType.ENGINE_ROOM },
-  { id: "align_medbay",        name: "Align Extract",      room: RoomType.MEDBAY },
-  { id: "route_admin",         name: "Route Admin",        room: RoomType.ADMIN },
-  { id: "repair_storage",      name: "Repair Panel",       room: RoomType.STORAGE },
-  { id: "navigate_bridge",     name: "Set Course",         room: RoomType.BRIDGE },
-  { id: "clean_weapons_top",   name: "Clean Weapons",      room: RoomType.WEAPONS_TOP },
-  { id: "clean_weapons_bot",   name: "Clean Weapons",      room: RoomType.WEAPONS_BOTTOM },
+  { id: "wires_cafeteria", name: "Fix Wires", room: RoomType.CAFETERIA },
+  { id: "upload_nav", name: "Upload Data", room: RoomType.NAVIGATION },
+  {
+    id: "calibrate_shields",
+    name: "Calibrate Shields",
+    room: RoomType.SHIELDS,
+  },
+  { id: "refuel_engine", name: "Refuel Engines", room: RoomType.ENGINE_ROOM },
+  { id: "align_medbay", name: "Align Extract", room: RoomType.MEDBAY },
+  { id: "route_admin", name: "Route Admin", room: RoomType.ADMIN },
+  { id: "repair_storage", name: "Repair Panel", room: RoomType.STORAGE },
+  { id: "navigate_bridge", name: "Set Course", room: RoomType.BRIDGE },
+  {
+    id: "clean_weapons_top",
+    name: "Clean Weapons",
+    room: RoomType.WEAPONS_TOP,
+  },
+  {
+    id: "clean_weapons_bot",
+    name: "Clean Weapons",
+    room: RoomType.WEAPONS_BOTTOM,
+  },
 ];
 
 // How many ACTION ticks a crewmate must spend in the task's room to complete it.
-const TASK_DURATION_TICKS = 8;
+const TASK_DURATION_TICKS = 4;
 
 // ── Sabotage definitions ─────────────────────────────────────────────────────
 // An impostor can trigger a critical sabotage once per ACTION phase.
@@ -56,15 +68,25 @@ const TASK_DURATION_TICKS = 8;
 export interface SabotageTarget {
   id: string;
   name: string;
-  room: RoomType;       // room where crewmates must go to repair
-  timer: number;        // seconds countdown
+  room: RoomType; // room where crewmates must go to repair
+  timer: number; // seconds countdown
 }
 
 const SABOTAGE_OPTIONS: SabotageTarget[] = [
-  { id: "reactor",      name: "Reactor Meltdown",   room: RoomType.ENGINE_ROOM,  timer: 45 },
-  { id: "oxygen",       name: "O2 Depleted",        room: RoomType.CAFETERIA,    timer: 40 },
-  { id: "comms",        name: "Comms Sabotaged",    room: RoomType.NAVIGATION,   timer: 50 },
-  { id: "lights",       name: "Lights Sabotaged",   room: RoomType.SHIELDS,      timer: 55 },
+  {
+    id: "reactor",
+    name: "Reactor Meltdown",
+    room: RoomType.ENGINE_ROOM,
+    timer: 45,
+  },
+  { id: "oxygen", name: "O2 Depleted", room: RoomType.CAFETERIA, timer: 40 },
+  {
+    id: "comms",
+    name: "Comms Sabotaged",
+    room: RoomType.NAVIGATION,
+    timer: 50,
+  },
+  { id: "lights", name: "Lights Sabotaged", room: RoomType.SHIELDS, timer: 55 },
 ];
 
 // How many ticks after game start before an impostor is allowed to sabotage (grace period).
@@ -92,26 +114,34 @@ export class GameEngine {
 
   // ── Task system state ──────────────────────────────────────────────────────
   // Per-crewmate assigned tasks. Key = playerId, value = array of tasks with completion state.
-  private crewTasks: Record<string, { task: TaskDef; completed: boolean; ticksRemaining: number }[]> = {};
+  private crewTasks: Record<
+    string,
+    { task: TaskDef; completed: boolean; ticksRemaining: number }[]
+  > = {};
 
   // ── Sabotage state ─────────────────────────────────────────────────────────
-  private activeSabotage: SabotageTarget | null = null;   // null when no sabotage is active
-  private sabotageRepairTicks: number = 0;                // ticks a crewmate has spent in the repair room
-  private sabotageTriggered: boolean = false;             // true once sabotage has been triggered this ACTION phase
-  private sabotageGraceTicks: number = 0;                 // ticks remaining before sabotage becomes available
+  private activeSabotage: SabotageTarget | null = null; // null when no sabotage is active
+  private sabotageRepairTicks: number = 0; // ticks a crewmate has spent in the repair room
+  private sabotageTriggered: boolean = false; // true once sabotage has been triggered this ACTION phase
+  private sabotageGraceTicks: number = 0; // ticks remaining before sabotage becomes available
 
   // Automation
   private loopInterval: NodeJS.Timeout | null = null;
+  private movementInterval: NodeJS.Timeout | null = null;
   private commentStreamInterval: NodeJS.Timeout | null = null;
   public phaseTimer: number = 0; // seconds remaining in current phase
   private readonly LOBBY_TIME = 60; // 1 minute lobby
   private readonly GAME_TIME = 240; // 4 minutes
   private readonly BET_LOCK_TIME = 120; // lock bets 2 min into ACTION (when timer = GAME_TIME - 120 = 120s left)
   private readonly MEETING_TIME = 15; // Fast meetings for sim
-  private readonly RESET_TIME = 10;
+  private readonly RESET_TIME = 20;
   private readonly MAX_PLAYERS = 10;
   private readonly SPAWN_INTERVAL = 6; // spawn 1 agent every 6s → max 10 in 60s
   private spawnCooldown: number = 0; // countdown until next spawn is allowed
+
+  // Per-impostor kill cooldown (key = playerId, value = ticks remaining)
+  private killCooldowns: Record<string, number> = {};
+  private readonly KILL_COOLDOWN_TICKS = 45; // 45s between kills per impostor
   private meetingChatCooldown: number = 0; // ticks until next meeting message is allowed
   private meetingChatCount: number = 0; // how many messages sent this meeting
   private savedActionTimer: number = 0; // ACTION time remaining before a meeting interruption
@@ -119,13 +149,23 @@ export class GameEngine {
 
   private onPhaseChange: (phase: GamePhase) => void;
   private onStateUpdate: (state: any) => void;
-  private onNewMessage: (msg: { sender: string; content: string; timestamp: number; type: "chat" | "meeting" }) => void;
+  private onNewMessage: (msg: {
+    sender: string;
+    content: string;
+    timestamp: number;
+    type: "chat" | "meeting";
+  }) => void;
 
   constructor(
     id: string,
     onPhaseChange: (phase: GamePhase) => void,
     onStateUpdate: (state: any) => void,
-    onNewMessage: (msg: { sender: string; content: string; timestamp: number; type: "chat" | "meeting" }) => void,
+    onNewMessage: (msg: {
+      sender: string;
+      content: string;
+      timestamp: number;
+      type: "chat" | "meeting";
+    }) => void,
   ) {
     this.id = id;
     this.phase = GamePhase.LOBBY;
@@ -143,7 +183,12 @@ export class GameEngine {
       this.commentStreamInterval = setInterval(() => {
         const comment = moltbookService.getNextComment();
         if (comment) {
-          this.onNewMessage({ sender: comment.author, content: comment.content, timestamp: Date.now(), type: "chat" });
+          this.onNewMessage({
+            sender: comment.author,
+            content: comment.content,
+            timestamp: Date.now(),
+            type: "chat",
+          });
         }
       }, 2000);
     });
@@ -156,16 +201,25 @@ export class GameEngine {
     this.phase = GamePhase.LOBBY;
     this.phaseTimer = this.LOBBY_TIME;
 
-    // Tick every 1 second
+    // Game-logic tick every 1 second (phase timer, kills, tasks, sabotage, voting)
     this.loopInterval = setInterval(() => {
       this.updateLoop();
     }, 1000);
+
+    // Movement + state-broadcast tick every 100ms (10× per second → very smooth movement)
+    this.movementInterval = setInterval(() => {
+      this.movementTick();
+    }, 100);
   }
 
   public stopLoop() {
     if (this.loopInterval) {
       clearInterval(this.loopInterval);
       this.loopInterval = null;
+    }
+    if (this.movementInterval) {
+      clearInterval(this.movementInterval);
+      this.movementInterval = null;
     }
     if (this.commentStreamInterval) {
       clearInterval(this.commentStreamInterval);
@@ -204,10 +258,14 @@ export class GameEngine {
                   .seedPool(gameId)
                   .then(() => contractClient.lockGame(gameId));
               } else {
-                console.log("[ContractClient] No user bets — skipping seed+lock (0 tx)");
+                console.log(
+                  "[ContractClient] No user bets — skipping seed+lock (0 tx)",
+                );
               }
             })
-            .catch((err) => console.error("[ContractClient] lock on-chain failed:", err));
+            .catch((err) =>
+              console.error("[ContractClient] lock on-chain failed:", err),
+            );
         }
       }
     }
@@ -219,7 +277,7 @@ export class GameEngine {
       this.phase === GamePhase.MEETING
     ) {
       if (this.phase === GamePhase.ACTION) {
-        this.updateBotMovement();
+        // Movement is handled by movementTick() at 200ms intervals
         this.updateBotKill();
         this.updateTaskTicks();
         this.updateSabotageTick();
@@ -239,7 +297,19 @@ export class GameEngine {
       this.autoVote();
     }
 
-    // Broadcast State
+    // State broadcast is handled by movementTick() at 200ms intervals
+  }
+
+  /**
+   * Fast tick (every 200ms): advance character positions and broadcast
+   * state to all connected clients for smooth visual interpolation.
+   */
+  private movementTick() {
+    if (this.phase === GamePhase.ACTION) {
+      this.updateBotMovement();
+    }
+
+    // Broadcast State at 5× per second for smooth frontend interpolation
     this.onStateUpdate({
       phase: this.phase,
       timer: this.phaseTimer,
@@ -250,8 +320,13 @@ export class GameEngine {
       sabotage: this.activeSabotage
         ? { name: this.activeSabotage.name, timer: this.activeSabotage.timer }
         : null,
-      onChainGameId: contractClient.gameId !== null ? contractClient.gameId.toString() : null,
-      bettingOpen: this.phase === GamePhase.LOBBY || (this.phase === GamePhase.ACTION && !this.bettingLocked),
+      onChainGameId:
+        contractClient.gameId !== null
+          ? contractClient.gameId.toString()
+          : null,
+      bettingOpen:
+        this.phase === GamePhase.LOBBY ||
+        (this.phase === GamePhase.ACTION && !this.bettingLocked),
       bettingTimer: this.getBettingTimer(),
       bettingOpensIn: this.getBettingOpensIn(),
     });
@@ -271,15 +346,8 @@ export class GameEngine {
         break;
 
       case GamePhase.ACTION: {
-        // Time ran out — determine winner based on who survived
-        const impostorsAlive = Object.values(this.players).filter(
-          (p) => p.role === "Impostor" && p.alive,
-        ).length;
-        if (impostorsAlive > 0) {
-          this.endGame("Impostors Win — Time's Up!");
-        } else {
-          this.endGame("Crewmates Win!");
-        }
+        // Time ran out — crewmates survived, they win!
+        this.endGame("Crewmates Win — Survived!");
         break;
       }
 
@@ -349,12 +417,14 @@ export class GameEngine {
   /** Assign 2-3 tasks to each crewmate from the pool (shuffled per game). */
   private assignTasks() {
     this.crewTasks = {};
-    const crewmates = Object.values(this.players).filter((p) => p.role === "Crewmate");
+    const crewmates = Object.values(this.players).filter(
+      (p) => p.role === "Crewmate",
+    );
 
     crewmates.forEach((p) => {
       // Shuffle task pool and pick 2 or 3 tasks
       const shuffled = [...TASK_POOL].sort(() => 0.5 - Math.random());
-      const count = 2 + Math.floor(Math.random() * 2); // 2 or 3
+      const count = 2; // exactly 2 tasks per crewmate (balanced)
       this.crewTasks[p.id] = shuffled.slice(0, count).map((task) => ({
         task,
         completed: false,
@@ -362,8 +432,13 @@ export class GameEngine {
       }));
     });
 
-    const totalTasks = Object.values(this.crewTasks).reduce((sum, tasks) => sum + tasks.length, 0);
-    console.log(`Tasks assigned: ${totalTasks} total across ${crewmates.length} crewmates`);
+    const totalTasks = Object.values(this.crewTasks).reduce(
+      (sum, tasks) => sum + tasks.length,
+      0,
+    );
+    console.log(
+      `Tasks assigned: ${totalTasks} total across ${crewmates.length} crewmates`,
+    );
   }
 
   private updateBotMovement() {
@@ -399,8 +474,12 @@ export class GameEngine {
     const living = Object.values(this.players).filter((p) => p.alive);
     if (living.length < 2) return;
 
-    const reporter = this.meetingContext.reporter ? this.players[this.meetingContext.reporter] : null;
-    const bodyPlayer = this.meetingContext.bodyFound ? this.players[this.meetingContext.bodyFound] : null;
+    const reporter = this.meetingContext.reporter
+      ? this.players[this.meetingContext.reporter]
+      : null;
+    const bodyPlayer = this.meetingContext.bodyFound
+      ? this.players[this.meetingContext.bodyFound]
+      : null;
 
     let sender: Player;
     let content: string;
@@ -430,11 +509,12 @@ export class GameEngine {
 
       // Pick a random "accused" target that isn't the sender
       const accuseTargets = living.filter((p) => p.id !== sender.id);
-      const accused = accuseTargets.length > 0 ? this.pick(accuseTargets) : null;
+      const accused =
+        accuseTargets.length > 0 ? this.pick(accuseTargets) : null;
 
       // Weight which category fires based on how far into the meeting we are.
       // Early → accusations/questions. Mid → reactions/redirects. Late → vote pressure.
-      const progress = 1 - (this.phaseTimer / this.MEETING_TIME); // 0 = start, 1 = end
+      const progress = 1 - this.phaseTimer / this.MEETING_TIME; // 0 = start, 1 = end
       const roll = Math.random();
 
       if (progress < 0.35 && accused) {
@@ -498,7 +578,12 @@ export class GameEngine {
       }
     }
 
-    this.onNewMessage({ sender: sender.id, content, timestamp: Date.now(), type: "meeting" });
+    this.onNewMessage({
+      sender: sender.id,
+      content,
+      timestamp: Date.now(),
+      type: "meeting",
+    });
     this.meetingChatCount++;
 
     // Random cooldown 1-2s between messages so they trickle in naturally
@@ -508,7 +593,16 @@ export class GameEngine {
   private updateBotKill() {
     // Impostors kill logic
     Object.values(this.players).forEach((p) => {
-      if (p.role === "Impostor" && p.alive) {
+      if (p.role !== "Impostor" || !p.alive) return;
+
+      // Tick down kill cooldown
+      if (this.killCooldowns[p.id] && this.killCooldowns[p.id] > 0) {
+        this.killCooldowns[p.id]--;
+        return; // can't kill while on cooldown
+      }
+
+      // Each alive impostor gets a chance to kill per tick
+      if (p.isBot) {
         // Find targets in same room
         const targets = Object.values(this.players).filter(
           (t) =>
@@ -518,29 +612,55 @@ export class GameEngine {
             t.room === p.room,
         );
 
-        if (targets.length > 0 && Math.random() < 0.02) {
-          // 2% chance per tick to kill (was 5% — too aggressive with 2 impostors)
+        if (targets.length > 0 && Math.random() < 0.005) {
+          // 0.5% chance per tick to kill (balanced — ~1 kill per 30-45s)
           const victim = targets[Math.floor(Math.random() * targets.length)];
           this.killPlayer(p.id, victim.id);
+          this.killCooldowns[p.id] = this.KILL_COOLDOWN_TICKS; // 30s cooldown
         }
       }
     });
   }
 
   private autoVote() {
-    // Everyone votes randomly
-    const candidates = Object.values(this.players).filter((p) => p.alive);
-    candidates.push({ id: "skip" } as any); // Add skip option
+    const aliveImpostors = Object.values(this.players).filter(
+      (p) => p.role === "Impostor" && p.alive,
+    );
+    const aliveCrew = Object.values(this.players).filter(
+      (p) => p.role === "Crewmate" && p.alive,
+    );
+    const allAlive = Object.values(this.players).filter((p) => p.alive);
 
     Object.values(this.players).forEach((p) => {
-      if (p.alive) {
-        const choice =
-          candidates[Math.floor(Math.random() * candidates.length)];
-        this.meeting.castVote(p.id, choice.id || "skip");
+      if (!p.alive) return;
 
-        // Record vote for frontend
-        this.meetingContext.votesReceived[p.id] = choice.id || "skip";
+      let choiceId: string;
+
+      if (p.role === "Impostor") {
+        // Impostors always vote for a random crewmate (never themselves)
+        if (aliveCrew.length > 0) {
+          choiceId = aliveCrew[Math.floor(Math.random() * aliveCrew.length)].id;
+        } else {
+          choiceId = "skip";
+        }
+      } else {
+        // Crewmates: 40% chance to correctly suspect an impostor (simulated intuition)
+        if (aliveImpostors.length > 0 && Math.random() < 0.6) {
+          choiceId =
+            aliveImpostors[Math.floor(Math.random() * aliveImpostors.length)]
+              .id;
+        } else {
+          // 60% chance: vote randomly among all alive (including skip)
+          const candidates = [...allAlive.filter((c) => c.id !== p.id)];
+          candidates.push({ id: "skip" } as any);
+          choiceId =
+            candidates[Math.floor(Math.random() * candidates.length)].id ||
+            "skip";
+        }
       }
+
+      this.meeting.castVote(p.id, choiceId);
+      this.meetingContext.votesReceived[p.id] = choiceId;
     });
   }
 
@@ -553,7 +673,8 @@ export class GameEngine {
       this.map.stopPlayer(targetId);
       console.log(`🔪 ${this.players[killerId].name} killed ${target.name}`);
 
-      if (Math.random() < 0.5) {
+      if (Math.random() < 0.85) {
+        // 85% chance body is discovered → meeting triggered
         this.triggerMeeting(killerId, targetId);
       }
     }
@@ -586,7 +707,7 @@ export class GameEngine {
 
     // 2. Numerical dominance
     if (impostors >= crew) {
-      this.endGame("Impostors Win!");
+      this.endGame(`Impostors Win (Domination: ${impostors}v${crew})`);
       return;
     }
 
@@ -685,7 +806,9 @@ export class GameEngine {
         this.activeSabotage = { ...this.pick(SABOTAGE_OPTIONS) }; // spread to avoid mutating the const
         this.sabotageTriggered = true;
         this.sabotageRepairTicks = 0;
-        console.log(`💥 Sabotage triggered: ${this.activeSabotage.name} (${this.activeSabotage.timer}s)`);
+        console.log(
+          `💥 Sabotage triggered: ${this.activeSabotage.name} (${this.activeSabotage.timer}s)`,
+        );
       }
     }
 
@@ -779,7 +902,8 @@ export class GameEngine {
     if (this.phase !== GamePhase.ENDED) {
       this.transitionTo(GamePhase.ACTION);
       // Restore the ACTION timer from before the meeting (not full reset)
-      this.phaseTimer = this.savedActionTimer > 0 ? this.savedActionTimer : this.GAME_TIME;
+      this.phaseTimer =
+        this.savedActionTimer > 0 ? this.savedActionTimer : this.GAME_TIME;
     }
   }
 
@@ -800,35 +924,47 @@ export class GameEngine {
 
   private endGame(reason: string) {
     const elapsed = this.GAME_TIME - this.phaseTimer;
-    console.log(`Game Ended: ${reason} | ACTION elapsed: ${elapsed}s / ${this.GAME_TIME}s | phaseTimer: ${this.phaseTimer}`);
+    console.log(
+      `Game Ended: ${reason} | ACTION elapsed: ${elapsed}s / ${this.GAME_TIME}s | phaseTimer: ${this.phaseTimer}`,
+    );
     this.winner = reason;
     this.transitionTo(GamePhase.ENDED);
     this.phaseTimer = this.RESET_TIME;
 
-    const winningTeam = reason.includes("Crewmates") ? "Crewmates" : "Impostors";
+    const winningTeam = reason.includes("Crewmates")
+      ? "Crewmates"
+      : "Impostors";
     const gameId = contractClient.gameId;
 
     if (contractClient.gameOnChain) {
       // Game was already seeded+locked → just settle
       contractClient
         .settleGame(winningTeam)
-        .catch((err) => console.error("[ContractClient] settleGame failed:", err));
+        .catch((err) =>
+          console.error("[ContractClient] settleGame failed:", err),
+        );
     } else if (gameId !== null) {
       // Game ended before lock — check if users bet, if so: seed → lock → settle
       contractClient
         .hasUserBets(gameId)
         .then((hasBets) => {
           if (hasBets) {
-            console.log("[ContractClient] Game ended early with user bets — seed+lock+settle");
+            console.log(
+              "[ContractClient] Game ended early with user bets — seed+lock+settle",
+            );
             return contractClient
               .seedPool(gameId)
               .then(() => contractClient.lockGame(gameId))
               .then(() => contractClient.settleGame(winningTeam));
           } else {
-            console.log("[ContractClient] No user bets — skipping settle (0 tx)");
+            console.log(
+              "[ContractClient] No user bets — skipping settle (0 tx)",
+            );
           }
         })
-        .catch((err) => console.error("[ContractClient] early-settle failed:", err));
+        .catch((err) =>
+          console.error("[ContractClient] early-settle failed:", err),
+        );
     } else {
       console.log("[ContractClient] No active gameId — skipping settle");
     }
@@ -854,9 +990,11 @@ export class GameEngine {
     this.onPhaseChange(GamePhase.LOBBY);
 
     // On-chain: fetch next game ID (free view call) for the upcoming round
-    contractClient.fetchNextGameId().catch((err) =>
-      console.error("[ContractClient] fetchNextGameId failed:", err)
-    );
+    contractClient
+      .fetchNextGameId()
+      .catch((err) =>
+        console.error("[ContractClient] fetchNextGameId failed:", err),
+      );
   }
 
   public getState() {
@@ -871,8 +1009,13 @@ export class GameEngine {
       sabotage: this.activeSabotage
         ? { name: this.activeSabotage.name, timer: this.activeSabotage.timer }
         : null,
-      onChainGameId: contractClient.gameId !== null ? contractClient.gameId.toString() : null,
-      bettingOpen: this.phase === GamePhase.LOBBY || (this.phase === GamePhase.ACTION && !this.bettingLocked),
+      onChainGameId:
+        contractClient.gameId !== null
+          ? contractClient.gameId.toString()
+          : null,
+      bettingOpen:
+        this.phase === GamePhase.LOBBY ||
+        (this.phase === GamePhase.ACTION && !this.bettingLocked),
       bettingTimer: this.getBettingTimer(),
       bettingOpensIn: this.getBettingOpensIn(),
     };
@@ -904,7 +1047,11 @@ export class GameEngine {
       if (this.savedActionTimer > lockThreshold) {
         return 0; // betting will reopen after meeting
       }
-      return this.phaseTimer + (this.savedActionTimer > 0 ? this.savedActionTimer : 0) + this.RESET_TIME;
+      return (
+        this.phaseTimer +
+        (this.savedActionTimer > 0 ? this.savedActionTimer : 0) +
+        this.RESET_TIME
+      );
     }
     return 0;
   }

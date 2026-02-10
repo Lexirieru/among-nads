@@ -92,7 +92,7 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                     >
                         {/* Avatar */}
                         <div
-                            className={`relative w-12 h-12 sm:w-16 sm:h-16 ${!player.alive ? 'grayscale opacity-60' : ''}`}
+                            className={`relative w-7 h-7 sm:w-16 sm:h-16 ${!player.alive ? 'grayscale opacity-60' : ''}`}
                             style={player.alive && player.role === 'Impostor' ? { filter: 'drop-shadow(0 0 6px #ef4444)' } : {}}
                         >
                             <img
@@ -102,13 +102,13 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                             />
                             {!player.alive && (
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-2xl drop-shadow-lg" style={{ textShadow: '0 0 4px #000' }}>💀</span>
+                                    <span className="text-sm sm:text-2xl drop-shadow-lg" style={{ textShadow: '0 0 4px #000' }}>💀</span>
                                 </div>
                             )}
                         </div>
-                        
+
                         {/* Name Label */}
-                        <div className={`mt-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[8px] text-white font-mono whitespace-nowrap ${player.role === 'Impostor' ? 'text-red-400' : ''}`}>
+                        <div className={`mt-0.5 sm:mt-1 px-1 sm:px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[5px] sm:text-[8px] text-white font-mono whitespace-nowrap ${player.role === 'Impostor' ? 'text-red-400' : ''}`}>
                             {player.name || player.id.slice(0,8)}
                         </div>
                     </div>
@@ -128,22 +128,22 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
             )}
 
             {/* ENDED OVERLAY */}
-            {phase === 'ENDED' && winner && (() => {
-                const crewWon = winner.includes("Crewmates");
+            {(phase === 'ENDED' || winner) && (() => {
+                const crewWon = winner?.includes("Crewmates");
                 const crewmates = Object.values(players).filter((p: any) => p.role === 'Crewmate');
                 const impostors = Object.values(players).filter((p: any) => p.role === 'Impostor');
 
                 return (
-                    <div className="absolute inset-0 bg-slate-900/97 flex flex-col items-center justify-center z-50 animate-in fade-in duration-500 p-4">
+                    <div className="absolute inset-0 bg-slate-900/97 flex flex-col items-center justify-center z-50 animate-in fade-in duration-500 p-2 sm:p-4 overflow-y-auto">
                         {/* Winner Banner */}
-                        <div className="text-center mb-2">
-                            <div className={`text-[8px] sm:text-[10px] font-bold tracking-widest uppercase mb-1 ${crewWon ? 'text-blue-400' : 'text-red-400'}`}>
+                        <div className="text-center mb-1 sm:mb-2 flex-shrink-0">
+                            <div className={`text-[7px] sm:text-[10px] font-bold tracking-widest uppercase mb-0.5 sm:mb-1 ${crewWon ? 'text-blue-400' : 'text-red-400'}`}>
                                 GAME OVER
                             </div>
-                            <h2 className={`text-2xl sm:text-4xl md:text-6xl font-black uppercase italic drop-shadow-lg ${crewWon ? 'text-blue-400' : 'text-red-500'}`} style={crewWon ? {} : { textShadow: '0 0 20px rgba(239,68,68,0.6)' }}>
+                            <h2 className={`text-lg sm:text-4xl md:text-6xl font-black uppercase italic drop-shadow-lg ${crewWon ? 'text-blue-400' : 'text-red-500'}`} style={crewWon ? {} : { textShadow: '0 0 20px rgba(239,68,68,0.6)' }}>
                                 {crewWon ? 'CREWMATES WIN' : 'IMPOSTORS WIN'}
                             </h2>
-                            <p className="text-slate-500 text-xs mt-2 font-bold">
+                            <p className="text-slate-500 text-[10px] sm:text-xs mt-1 sm:mt-2 font-bold">
                                 {winner === 'Time Limit Reached'
                                     ? 'The impostors survived long enough.'
                                     : winner?.includes('Sabotage')
@@ -157,10 +157,10 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                         </div>
 
                         {/* Player Roster — two columns */}
-                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 w-full max-w-2xl overflow-y-auto">
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 sm:mt-4 w-full max-w-2xl overflow-y-auto max-h-[180px] sm:max-h-none flex-shrink">
                             {/* Crewmates */}
-                            <div className="flex-1 bg-slate-950/60 border border-blue-900/40 rounded-xl p-3">
-                                <div className={`text-[10px] font-bold tracking-widest mb-2 text-center uppercase ${crewWon ? 'text-blue-400' : 'text-blue-600'}`}>
+                            <div className="flex-1 bg-slate-950/60 border border-blue-900/40 rounded-lg sm:rounded-xl p-2 sm:p-3">
+                                <div className={`text-[8px] sm:text-[10px] font-bold tracking-widest mb-1 sm:mb-2 text-center uppercase ${crewWon ? 'text-blue-400' : 'text-blue-600'}`}>
                                     Crewmates {crewWon && '— VICTORY'}
                                 </div>
                                 <div className="space-y-1.5">
@@ -177,8 +177,8 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                             </div>
 
                             {/* Impostors */}
-                            <div className="flex-1 bg-slate-950/60 border border-red-900/40 rounded-xl p-3">
-                                <div className={`text-[10px] font-bold tracking-widest mb-2 text-center uppercase ${!crewWon ? 'text-red-400' : 'text-red-700'}`}>
+                            <div className="flex-1 bg-slate-950/60 border border-red-900/40 rounded-lg sm:rounded-xl p-2 sm:p-3">
+                                <div className={`text-[8px] sm:text-[10px] font-bold tracking-widest mb-1 sm:mb-2 text-center uppercase ${!crewWon ? 'text-red-400' : 'text-red-700'}`}>
                                     Impostors {!crewWon && '— VICTORY'}
                                 </div>
                                 <div className="space-y-1.5">
@@ -215,37 +215,37 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
 
                     {/* STAGE 2 — Discuss panel */}
                     {meetingStage === 'discuss' && (
-                        <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center animate-in fade-in duration-300 p-2 sm:p-4">
+                        <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center animate-in fade-in duration-300 p-1.5 sm:p-4">
 
                             {/* Header */}
-                            <div className="text-center mb-3 sm:mb-6">
-                                <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-red-500 animate-pulse uppercase italic">
+                            <div className="text-center mb-1 sm:mb-6 flex-shrink-0">
+                                <h2 className="text-[10px] sm:text-3xl md:text-5xl font-black text-red-500 animate-pulse uppercase italic">
                                     {meetingContext?.bodyFound ? "DEAD BODY REPORTED" : "EMERGENCY MEETING"}
                                 </h2>
                                 {meetingContext?.bodyFound && body && (
-                                    <div className="text-slate-400 mt-2 text-sm font-bold flex items-center gap-2 justify-center">
+                                    <div className="text-slate-400 mt-0.5 sm:mt-2 text-[7px] sm:text-sm font-bold flex items-center gap-1 sm:gap-2 justify-center">
                                         <span>Found body of </span>
-                                        <span className="bg-red-900/50 px-2 py-1 rounded text-red-200">{body.name}</span>
+                                        <span className="bg-red-900/50 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-red-200">{body.name}</span>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row w-full max-w-5xl gap-3 sm:gap-6 flex-1 min-h-0 overflow-y-auto sm:overflow-visible">
+                            <div className="flex flex-row w-full max-w-5xl gap-1.5 sm:gap-6 flex-1 min-h-0">
 
                                 {/* LEFT: Player Grid & Voting */}
-                                <div className="sm:flex-1 bg-slate-950/50 rounded-xl border border-slate-700 p-2 sm:p-4 overflow-y-auto">
-                                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                <div className="flex-1 bg-slate-950/50 rounded-md sm:rounded-xl border border-slate-700 p-1 sm:p-4 overflow-y-auto">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 sm:gap-3">
                                         {Object.values(players).map((p: any) => {
                                             const hasVoted = meetingContext?.votesReceived && meetingContext.votesReceived[p.id];
                                             return (
-                                                <div key={p.id} className={`flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg border ${p.alive ? 'bg-slate-800 border-slate-700' : 'bg-red-900/20 border-red-900/50 opacity-60'}`}>
-                                                    <div className={`w-8 h-8 sm:w-12 sm:h-12 flex-shrink-0 ${!p.alive ? 'grayscale opacity-60' : ''}`}>
+                                                <div key={p.id} className={`flex items-center gap-1 sm:gap-3 p-0.5 sm:p-2 rounded-sm sm:rounded-lg border ${p.alive ? 'bg-slate-800 border-slate-700' : 'bg-red-900/20 border-red-900/50 opacity-60'}`}>
+                                                    <div className={`w-4 h-4 sm:w-12 sm:h-12 flex-shrink-0 ${!p.alive ? 'grayscale opacity-60' : ''}`}>
                                                         <img src={p.avatar || "/characters/molandak-black-tg.png"} alt={p.name} className="w-full h-full object-contain" />
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <div className="text-[10px] sm:text-xs font-bold truncate text-slate-200">{p.name}</div>
+                                                    <div className="min-w-0 flex items-center gap-1">
+                                                        <div className="text-[5px] sm:text-xs font-bold truncate text-slate-200">{p.name}</div>
                                                         {hasVoted && (
-                                                            <div className="text-[10px] text-green-400 font-bold">VOTED</div>
+                                                            <div className="text-[5px] sm:text-[10px] text-green-400 font-bold flex-shrink-0">✓</div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -255,20 +255,20 @@ export function GameMap({ players, currentPlayerId, messages, phase, meetingCont
                                 </div>
 
                                 {/* RIGHT: Discussion Bubbles */}
-                                <div className="sm:flex-1 bg-slate-800/50 rounded-xl border border-slate-700 p-2 sm:p-4 flex flex-col relative overflow-hidden">
-                                    <div className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">DISCUSS!</div>
+                                <div className="flex-1 bg-slate-800/50 rounded-md sm:rounded-xl border border-slate-700 p-1 sm:p-4 flex flex-col relative overflow-hidden">
+                                    <div className="text-[6px] sm:text-xs font-bold text-slate-500 mb-0.5 sm:mb-2 uppercase tracking-widest">DISCUSS!</div>
 
-                                    <div className="space-y-3 overflow-y-auto flex-1 flex flex-col justify-end">
+                                    <div className="space-y-1 sm:space-y-3 overflow-y-auto flex-1 flex flex-col justify-end">
                                         {recentMessages.map((msg, idx) => {
                                             const sender = players[msg.sender];
                                             return (
-                                                <div key={idx} className="flex gap-3 animate-in slide-in-from-bottom-2 fade-in duration-300">
-                                                     <div className="w-10 h-10 flex-shrink-0">
+                                                <div key={idx} className="flex gap-1 sm:gap-3 animate-in slide-in-from-bottom-2 fade-in duration-300">
+                                                     <div className="w-4 h-4 sm:w-10 sm:h-10 flex-shrink-0">
                                                         <img src={sender?.avatar || "/characters/molandak-black-tg.png"} alt={sender?.name} className="w-full h-full object-contain" />
                                                      </div>
-                                                     <div className="bg-white text-black p-2 rounded-lg rounded-tl-none shadow-lg max-w-[80%]">
-                                                         <div className="text-[10px] font-bold text-slate-500 mb-0.5">{sender?.name || 'Unknown'}</div>
-                                                         <div className="text-xs font-medium leading-relaxed">{msg.content}</div>
+                                                     <div className="bg-white text-black p-0.5 sm:p-2 rounded-sm sm:rounded-lg rounded-tl-none shadow-lg max-w-[85%]">
+                                                         <div className="text-[5px] sm:text-[10px] font-bold text-slate-500">{sender?.name || 'Unknown'}</div>
+                                                         <div className="text-[6px] sm:text-xs font-medium leading-tight sm:leading-relaxed">{msg.content}</div>
                                                      </div>
                                                 </div>
                                             )
