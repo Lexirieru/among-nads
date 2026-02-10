@@ -1,5 +1,5 @@
 const SUBGRAPH_URL =
-  "https://api.goldsky.com/api/public/project_cmf7w213gukw101tb0u5m7760/subgraphs/amongnads/1.0.0/gn";
+  "https://api.goldsky.com/api/public/project_cmf7w213gukw101tb0u5m7760/subgraphs/amongnads-upgradeable/1.0.0/gn";
 
 export async function querySubgraph<T = any>(
   query: string,
