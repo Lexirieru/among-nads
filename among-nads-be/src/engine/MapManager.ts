@@ -362,6 +362,7 @@ interface PlayerMovement {
   pos: Pos; // current interpolated position
   path: Pos[]; // remaining waypoints to walk toward (next target is [0])
   idleTimer: number; // ticks remaining before picking a new destination
+  isControlled?: boolean; // If true, automation skips this player
 }
 
 // How many % units the character moves per tick (100 ms).
@@ -389,6 +390,21 @@ export class MapManager {
       path: [],
       idleTimer: 0,
     };
+  }
+
+  public setControlled(playerId: string, controlled: boolean) {
+    if (this.players[playerId]) {
+      this.players[playerId].isControlled = controlled;
+      this.players[playerId].path = []; // clear any automated path
+    }
+  }
+
+  public setPosition(playerId: string, x: number, y: number) {
+    if (this.players[playerId]) {
+      this.players[playerId].pos = { x, y };
+      // room is updated by logic or separate call, but let's update it here too for safety
+      this.players[playerId].room = this.getRoomAt(x, y);
+    }
   }
 
   /** Advance all players one tick (call once per second from GameEngine). */
@@ -433,6 +449,9 @@ export class MapManager {
     const p = this.players[id];
     if (!p) return;
 
+    // Controlled players do not move automatically
+    if (p.isControlled) return;
+
     // If we have waypoints to walk toward, advance.
     if (p.path.length > 0) {
       const target = p.path[0];
@@ -449,7 +468,7 @@ export class MapManager {
         if (p.path.length === 0) {
           // Update logical room to the destination
           // (the last waypoint we snapped to IS the room centre we targeted)
-          p.room = this.findRoomAtPos(p.pos);
+          p.room = this.getRoomAt(p.pos.x, p.pos.y);
           p.idleTimer =
             IDLE_MIN + Math.floor(Math.random() * (IDLE_MAX - IDLE_MIN + 1));
         }
@@ -489,7 +508,8 @@ export class MapManager {
   }
 
   /** Given a position, find which room centre it matches (or closest). */
-  private findRoomAtPos(pos: Pos): RoomType {
+  public getRoomAt(x: number, y: number): RoomType {
+    const pos = { x, y };
     let best: RoomType = RoomType.CAFETERIA;
     let bestDist = Infinity;
     for (const [room, centre] of Object.entries(ROOM_CENTER) as [

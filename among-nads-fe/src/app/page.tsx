@@ -8,10 +8,14 @@ import { ChatLog } from '@/components/ChatLog'
 import { BettingPanel } from '@/components/BettingPanel'
 import { OnboardingSection } from '@/components/OnboardingSection'
 
+import { AgentProfileModal } from '@/components/AgentProfileModal'
+import { Player } from '@/types'
+
 export default function Home() {
   const { address, isConnected } = useAccount()
   const [isMounted, setIsMounted] = useState(false)
-  
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
   // Auto-connect to sim-1
   const { gameState, isConnected: isBackendConnected, sendMessage } = useGameState("sim-1")
 
@@ -22,8 +26,16 @@ export default function Home() {
   if (!isMounted) return null;
 
   return (
-    <main className="text-white px-3 py-4 sm:px-8 sm:pb-8">
+    <main className="text-white px-3 py-4 sm:px-8 sm:pb-8 relative">
       <div className="max-w-7xl mx-auto space-y-6">
+
+        {/* Modal Overlay */}
+        {selectedPlayer && (
+            <AgentProfileModal 
+                player={selectedPlayer} 
+                onClose={() => setSelectedPlayer(null)} 
+            />
+        )}
 
         {/* Game HUD bar */}
         <div className="flex items-center justify-between retro-panel p-2 sm:p-3 rounded-lg gap-2">
@@ -55,6 +67,8 @@ export default function Home() {
                     meetingContext={gameState?.meetingContext}
                     winner={gameState?.winner}
                     sabotage={gameState?.sabotage}
+                    onPlayerClick={(player) => setSelectedPlayer(player)}
+                    selectedPlayerId={selectedPlayer?.id}
                 />
             </div>
             <div className="lg:col-span-4">

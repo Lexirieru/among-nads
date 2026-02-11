@@ -440,6 +440,40 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
         );
     }
 
+    // ── BETTING CLOSED: user didn't bet and betting window is over ──
+    if (!bettingOpen && !userBet.hasBet) {
+        return (
+            <div className="retro-panel p-4 flex flex-col h-full">
+                {balanceBar}
+                {zeroBalanceWarning}
+                <div className="text-[8px] font-pixel text-[#ffd700] uppercase tracking-widest mb-3 text-glow-gold">
+                    Bet The Agent's Team!
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                    <div className="w-12 h-12 flex items-center justify-center rounded-full bg-[#ff6b6b]/10 border border-[#ff6b6b]/20">
+                        <span className="text-xl">🔒</span>
+                    </div>
+                    <div className="text-[10px] font-pixel text-[#ff6b6b]">
+                        Betting Closed
+                    </div>
+                    <div className="text-[7px] font-pixel text-[#a8d8ea]/40 text-center leading-relaxed">
+                        Bets can only be placed during the LOBBY phase before the game starts.
+                    </div>
+                    {bettingOpensIn > 0 && (
+                        <div className="flex items-center gap-2 p-2 bg-[#0d2137]/60 rounded-sm">
+                            <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">Next Round In</div>
+                            <div className="text-[9px] font-pixel text-[#88d8b0] text-glow-mint">{formatBetTimer(bettingOpensIn)}</div>
+                        </div>
+                    )}
+                </div>
+                <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
+                    {onChainGameId !== null && onChainGameId !== undefined ? `Round #${onChainGameId}` : 'Waiting for on-chain round...'}
+                </div>
+                {claimSection}
+            </div>
+        );
+    }
+
     // ── LOBBY: place bet form ──
     return (
         <div className="retro-panel p-4 flex flex-col h-full relative overflow-visible">

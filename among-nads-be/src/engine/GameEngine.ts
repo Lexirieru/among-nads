@@ -19,8 +19,14 @@ export interface Player {
   x: number; // current position in % (0-100)
   y: number;
   isBot: boolean;
+  isControlled?: boolean; // If true, this agent is controlled via socket, not AI loop
   color?: string;
   avatar?: string;
+  owner?: string; // X handle
+  ownerAvatar?: string;
+  ownerFollowers?: number;
+  karma?: number;
+  posts?: string[]; // Recent posts history
 }
 
 // ── Task definitions ─────────────────────────────────────────────────────────
@@ -136,7 +142,7 @@ export class GameEngine {
   private readonly MEETING_TIME = 15; // Fast meetings for sim
   private readonly RESET_TIME = 20;
   private readonly MAX_PLAYERS = 10;
-  private readonly SPAWN_INTERVAL = 6; // spawn 1 agent every 6s → max 10 in 60s
+  private readonly SPAWN_INTERVAL = 4; // spawn 1 agent every 4s -> all 10 in ~40s (plenty of buffer)
   private spawnCooldown: number = 0; // countdown until next spawn is allowed
 
   // Per-impostor kill cooldown (key = playerId, value = ticks remaining)
@@ -241,34 +247,7 @@ export class GameEngine {
       this.spawnAgentsFromMoltbook();
     }
 
-    // 3. MID-ACTION: Lock bets after BET_LOCK_TIME seconds
-    if (this.phase === GamePhase.ACTION && !this.bettingLocked) {
-      const elapsed = this.GAME_TIME - this.phaseTimer;
-      if (elapsed >= this.BET_LOCK_TIME) {
-        this.bettingLocked = true;
-        console.log("[GameEngine] Betting locked — 2 min into ACTION");
-        // On-chain: seed + lock ONLY if users have bet
-        const gameId = contractClient.gameId;
-        if (gameId !== null) {
-          contractClient
-            .hasUserBets(gameId)
-            .then((hasBets) => {
-              if (hasBets) {
-                return contractClient
-                  .seedPool(gameId)
-                  .then(() => contractClient.lockGame(gameId));
-              } else {
-                console.log(
-                  "[ContractClient] No user bets — skipping seed+lock (0 tx)",
-                );
-              }
-            })
-            .catch((err) =>
-              console.error("[ContractClient] lock on-chain failed:", err),
-            );
-        }
-      }
-    }
+    // 3. (Betting is now LOBBY-only — no mid-ACTION lock needed)
 
     // 4. ACTION / ALL Phases: Bots Act
     if (
@@ -324,9 +303,7 @@ export class GameEngine {
         contractClient.gameId !== null
           ? contractClient.gameId.toString()
           : null,
-      bettingOpen:
-        this.phase === GamePhase.LOBBY ||
-        (this.phase === GamePhase.ACTION && !this.bettingLocked),
+      bettingOpen: this.phase === GamePhase.LOBBY,
       bettingTimer: this.getBettingTimer(),
       bettingOpensIn: this.getBettingOpensIn(),
     });
@@ -389,10 +366,15 @@ export class GameEngine {
         role: "Crewmate",
         alive: true,
         room: RoomType.CAFETERIA,
-        x: 50,
-        y: 20,
+        x: 50 + (Math.random() * 4 - 2), // Random jitter +/- 2% to prevent stacking
+        y: 20 + (Math.random() * 4 - 2),
         isBot: true,
         avatar: agent.avatar,
+        owner: agent.owner,
+        ownerAvatar: agent.ownerAvatar,
+        ownerFollowers: agent.ownerFollowers,
+        karma: agent.karma,
+        posts: agent.posts,
       };
       this.map.spawnPlayer(agent.id);
       console.log(`Spawned ${agent.name} in Lobby`);
@@ -410,8 +392,29 @@ export class GameEngine {
     this.transitionTo(GamePhase.ACTION);
     this.phaseTimer = this.GAME_TIME;
 
-    // Betting stays open for the first BET_LOCK_TIME seconds of ACTION
-    this.bettingLocked = false;
+    // Betting is LOBBY-only — lock immediately when ACTION starts
+    this.bettingLocked = true;
+    console.log("[GameEngine] Betting locked — ACTION started");
+    // On-chain: seed + lock ONLY if users have bet
+    const gameId = contractClient.gameId;
+    if (gameId !== null) {
+      contractClient
+        .hasUserBets(gameId)
+        .then((hasBets) => {
+          if (hasBets) {
+            return contractClient
+              .seedPool(gameId)
+              .then(() => contractClient.lockGame(gameId));
+          } else {
+            console.log(
+              "[ContractClient] No user bets — skipping seed+lock (0 tx)",
+            );
+          }
+        })
+        .catch((err) =>
+          console.error("[ContractClient] lock on-chain failed:", err),
+        );
+    }
   }
 
   /** Assign 2-3 tasks to each crewmate from the pool (shuffled per game). */
@@ -602,7 +605,7 @@ export class GameEngine {
       }
 
       // Each alive impostor gets a chance to kill per tick
-      if (p.isBot) {
+      if (p.isBot && !p.isControlled) {
         // Find targets in same room
         const targets = Object.values(this.players).filter(
           (t) =>
@@ -632,7 +635,7 @@ export class GameEngine {
     const allAlive = Object.values(this.players).filter((p) => p.alive);
 
     Object.values(this.players).forEach((p) => {
-      if (!p.alive) return;
+      if (!p.alive || p.isControlled) return;
 
       let choiceId: string;
 
@@ -1013,9 +1016,7 @@ export class GameEngine {
         contractClient.gameId !== null
           ? contractClient.gameId.toString()
           : null,
-      bettingOpen:
-        this.phase === GamePhase.LOBBY ||
-        (this.phase === GamePhase.ACTION && !this.bettingLocked),
+      bettingOpen: this.phase === GamePhase.LOBBY,
       bettingTimer: this.getBettingTimer(),
       bettingOpensIn: this.getBettingOpensIn(),
     };
@@ -1024,10 +1025,7 @@ export class GameEngine {
   /** Seconds remaining until betting closes. 0 when already locked. */
   private getBettingTimer(): number {
     if (this.phase === GamePhase.LOBBY) {
-      return this.phaseTimer + this.BET_LOCK_TIME; // lobby remaining + 2 min of ACTION
-    }
-    if (this.phase === GamePhase.ACTION && !this.bettingLocked) {
-      return this.phaseTimer - (this.GAME_TIME - this.BET_LOCK_TIME); // timer - 120
+      return this.phaseTimer; // betting closes when LOBBY ends
     }
     return 0;
   }
@@ -1037,16 +1035,10 @@ export class GameEngine {
     if (this.phase === GamePhase.ENDED) {
       return this.phaseTimer; // reset countdown → then LOBBY starts (betting open)
     }
-    if (this.phase === GamePhase.ACTION && this.bettingLocked) {
+    if (this.phase === GamePhase.ACTION) {
       return this.phaseTimer + this.RESET_TIME; // ACTION remaining + ENDED reset
     }
     if (this.phase === GamePhase.MEETING) {
-      // Meeting → back to ACTION (may still have betting time left)
-      // If savedActionTimer > lock threshold, betting reopens after meeting
-      const lockThreshold = this.GAME_TIME - this.BET_LOCK_TIME; // 120
-      if (this.savedActionTimer > lockThreshold) {
-        return 0; // betting will reopen after meeting
-      }
       return (
         this.phaseTimer +
         (this.savedActionTimer > 0 ? this.savedActionTimer : 0) +
@@ -1054,5 +1046,79 @@ export class GameEngine {
       );
     }
     return 0;
+  }
+  // ── Controlled Agent Actions ──────────────────────────────────────────────
+
+  public handleAction(playerId: string, action: string, payload: any) {
+    const player = this.players[playerId];
+    if (!player || !player.alive) return;
+
+    // Safety check: only controlled players should use this, but for testing we allow all
+    // if (!player.isControlled) return;
+
+    switch (action) {
+      case "move":
+        // payload: { x, y }
+        if (this.phase === GamePhase.ACTION || this.phase === GamePhase.LOBBY) {
+          this.handleMove(player, payload.x, payload.y);
+        }
+        break;
+
+      case "kill":
+        // payload: { targetId }
+        if (this.phase === GamePhase.ACTION) {
+          this.handleKillAction(player, payload.targetId);
+        }
+        break;
+
+      // TODO: Implement task completion logic for controlled agents
+
+      case "vote":
+        // payload: { targetId }
+        if (this.phase === GamePhase.MEETING) {
+          this.handleVoteAction(player, payload.targetId);
+        }
+        break;
+    }
+  }
+
+  private handleMove(player: Player, x: number, y: number) {
+    // Clamp to map bounds
+    const newX = Math.max(0, Math.min(100, x));
+    const newY = Math.max(0, Math.min(100, y));
+
+    player.x = newX;
+    player.y = newY;
+
+    // Update MapManager state so it doesn't overwrite us next tick (and for room calc)
+    this.map.setPosition(player.id, newX, newY);
+    player.room = this.map.getRoom(player.id);
+  }
+
+  private handleKillAction(player: Player, targetId: string) {
+    if (player.role !== "Impostor") return;
+
+    // Check cooldown
+    if (this.killCooldowns[player.id] && this.killCooldowns[player.id] > 0)
+      return;
+
+    const target = this.players[targetId];
+    if (!target || !target.alive || target.role === "Impostor") return;
+
+    // Distance check? For now simplified (must be in same room)
+    if (target.room !== player.room) return;
+
+    // Commit kill
+    target.alive = false;
+    this.killCooldowns[player.id] = this.KILL_COOLDOWN_TICKS;
+
+    // Check win condition immediately? Default loop handles it next tick
+  }
+
+  private handleVoteAction(player: Player, targetId: string) {
+    // Only vote if haven't voted yet
+    if (this.meetingContext.votesReceived[player.id]) return;
+
+    this.meetingContext.votesReceived[player.id] = targetId;
   }
 }

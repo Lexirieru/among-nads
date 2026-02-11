@@ -14,8 +14,19 @@ export enum RoomType {
 
 export type Player = {
   id: string;
+  name: string;
   address?: string;
-  role?: "Crewmate" | "Impostor";
+  role: "Crewmate" | "Impostor";
+  alive: boolean;
+  avatar?: string;
+  owner?: string; // X handle
+  ownerAvatar?: string;
+  ownerFollowers?: number;
+  karma?: number;
+  posts?: string[];
+  x?: number;
+  y?: number;
+  room?: RoomType;
 };
 
 export type GameState = {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
+import useSound from "use-sound";
 
 export type Player = {
   id: string; // Socket ID or Agent ID
@@ -18,7 +19,12 @@ export type GameState = {
   players: Record<string, Player>;
   phase: GamePhase;
   timer: number;
-  messages: { sender: string; content: string; timestamp?: number; type?: "chat" | "meeting" }[];
+  messages: {
+    sender: string;
+    content: string;
+    timestamp?: number;
+    type?: "chat" | "meeting";
+  }[];
   winner?: string | null;
   taskProgress?: { completed: number; total: number };
   sabotage?: { name: string; timer: number } | null;
@@ -63,19 +69,23 @@ export function useGameState(gameId: string = "sim-1") {
   // Pakai ref agar tidak trigger re-render dan konsisten di semua callback
   const avatarMap = useRef<Record<string, string>>({});
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+  const BACKEND_URL =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
   /** Inject avatar dari local map ke players. Assign baru kalau player belum ada di map. */
-  const injectAvatars = useCallback((players: Record<string, Player>): Record<string, Player> => {
-    const result: Record<string, Player> = {};
-    for (const [id, player] of Object.entries(players)) {
-      if (!avatarMap.current[id]) {
-        avatarMap.current[id] = pickNextCharacter();
+  const injectAvatars = useCallback(
+    (players: Record<string, Player>): Record<string, Player> => {
+      const result: Record<string, Player> = {};
+      for (const [id, player] of Object.entries(players)) {
+        if (!avatarMap.current[id]) {
+          avatarMap.current[id] = pickNextCharacter();
+        }
+        result[id] = { ...player, avatar: avatarMap.current[id] };
       }
-      result[id] = { ...player, avatar: avatarMap.current[id] };
-    }
-    return result;
-  }, []);
+      return result;
+    },
+    [],
+  );
 
   useEffect(() => {
     const newSocket = io(BACKEND_URL);
@@ -118,15 +128,23 @@ export function useGameState(gameId: string = "sim-1") {
     });
 
     // Chat updates
-    newSocket.on("new_message", (msg: { sender: string; content: string; timestamp?: number; type?: "chat" | "meeting" }) => {
-      setGameState((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: [...(prev.messages || []), msg],
-        };
-      });
-    });
+    newSocket.on(
+      "new_message",
+      (msg: {
+        sender: string;
+        content: string;
+        timestamp?: number;
+        type?: "chat" | "meeting";
+      }) => {
+        setGameState((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            messages: [...(prev.messages || []), msg],
+          };
+        });
+      },
+    );
 
     setSocket(newSocket);
 
@@ -134,6 +152,25 @@ export function useGameState(gameId: string = "sim-1") {
       newSocket.disconnect();
     };
   }, [injectAvatars]);
+
+  // Sound Effect Logic
+  const [playJoin] = useSound("/amongnads_joiningLobby.mp3", { volume: 1 });
+  const prevPlayerCountRef = useRef(0);
+
+  useEffect(() => {
+    if (!gameState) return;
+    const currentCount = Object.keys(gameState.players).length;
+
+    // Play sound if player count increased (and we are not just initializing)
+    if (
+      currentCount > prevPlayerCountRef.current &&
+      prevPlayerCountRef.current > 0
+    ) {
+      playJoin();
+    }
+
+    prevPlayerCountRef.current = currentCount;
+  }, [gameState, playJoin]);
 
   const sendMessage = (content: string) => {
     if (socket) {
