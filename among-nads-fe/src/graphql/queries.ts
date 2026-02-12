@@ -65,3 +65,24 @@ export const GET_ALL_USER_CLAIMS = `
     }
   }
 `;
+
+/** Leaderboard: all bets + claims across all users */
+export const GET_LEADERBOARD_DATA = `
+  query GetLeaderboardData {
+    betPlaceds(first: 1000, orderBy: timestamp_, orderDirection: desc) {
+      bettor
+      amount
+      team
+      gameId
+    }
+    payoutClaimeds(first: 1000, orderBy: timestamp_, orderDirection: desc) {
+      bettor
+      amount
+      gameId
+    }
+    gameSettleds(first: 100, orderBy: gameId, orderDirection: desc) {
+      gameId
+      winningTeam
+    }
+  }
+`;

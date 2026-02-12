@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { querySubgraph } from '@/graphql/client';
+import { formatEther } from 'viem';
 import {
     GET_USER_BET_HISTORY,
     GET_RECENT_GAMES,
@@ -12,7 +13,7 @@ import {
 
 const teamName = (t: number) => (t === 0 ? 'Crewmates' : 'Impostors');
 const teamColor = (t: number) => (t === 0 ? '#a8d8ea' : '#ff6b6b');
-const formatUsdc = (raw: string) => (Number(raw) / 1e6).toFixed(2);
+const formatMon = (raw: string) => Number(formatEther(BigInt(raw))).toFixed(4);
 const formatDate = (ts: string) => {
     const d = new Date(Number(ts) * 1000);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
@@ -77,11 +78,11 @@ export default function HistoryPage() {
                     result = team === winningTeam ? 'win' : 'lose';
                 }
 
-                totalBet += Number(bet.amount) / 1e6;
+                totalBet += Number(formatEther(BigInt(bet.amount)));
                 if (result === 'win') wins++;
                 else if (result === 'lose') losses++;
                 else pending++;
-                if (claimedAmount) totalClaimed += Number(claimedAmount) / 1e6;
+                if (claimedAmount) totalClaimed += Number(formatEther(BigInt(claimedAmount)));
 
                 return {
                     gameId: bet.gameId,
@@ -158,11 +159,11 @@ export default function HistoryPage() {
                             </div>
                             <div className="retro-panel p-3 text-center">
                                 <div className="text-sm font-pixel text-[#a8d8ea]">{stats.totalBet.toFixed(2)}</div>
-                                <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">Total Bet</div>
+                                <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">Total MON Bet</div>
                             </div>
                             <div className="retro-panel p-3 text-center col-span-2 sm:col-span-1">
                                 <div className="text-sm font-pixel text-[#88d8b0]">{stats.totalClaimed.toFixed(2)}</div>
-                                <div className="text-[7px] font-pixel text-[#88d8b0]/50 uppercase tracking-wider">Claimed</div>
+                                <div className="text-[7px] font-pixel text-[#88d8b0]/50 uppercase tracking-wider">MON Claimed</div>
                             </div>
                         </div>
 
@@ -218,7 +219,7 @@ export default function HistoryPage() {
 
                                             {/* Bet amount */}
                                             <div className="col-span-2 text-right text-[#ffd700]">
-                                                {formatUsdc(row.amount)} <span className="text-[#a8d8ea]/30">USDC</span>
+                                                {formatMon(row.amount)} <span className="text-[#a8d8ea]/30">MON</span>
                                             </div>
 
                                             {/* Result */}
@@ -238,7 +239,7 @@ export default function HistoryPage() {
                                             <div className="col-span-2 text-right">
                                                 {row.claimed && row.claimedAmount ? (
                                                     <span className="text-[#88d8b0]">
-                                                        {formatUsdc(row.claimedAmount)} <span className="text-[#a8d8ea]/30">USDC</span>
+                                                        {formatMon(row.claimedAmount)} <span className="text-[#a8d8ea]/30">MON</span>
                                                     </span>
                                                 ) : row.result === 'win' ? (
                                                     <span className="text-[#ffd700]/50 text-[7px]">Unclaimed</span>

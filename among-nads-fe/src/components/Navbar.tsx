@@ -36,6 +36,16 @@ export function Navbar() {
                         History
                     </Link>
                     <Link
+                        href="/leaderboard"
+                        className={`px-2 sm:px-3 py-1.5 rounded-sm text-[7px] sm:text-[8px] font-pixel uppercase tracking-wider transition-all ${
+                            pathname === '/leaderboard'
+                                ? 'bg-[#ffd700]/10 text-[#ffd700] border border-[#ffd700]/30'
+                                : 'text-[#a8d8ea]/50 hover:text-[#a8d8ea] hover:bg-[#0d2137]/40'
+                        }`}
+                    >
+                        Leaderboard
+                    </Link>
+                    <Link
                         href="/faucet"
                         className={`px-2 sm:px-3 py-1.5 rounded-sm text-[7px] sm:text-[8px] font-pixel uppercase tracking-wider transition-all ${
                             pathname === '/faucet'

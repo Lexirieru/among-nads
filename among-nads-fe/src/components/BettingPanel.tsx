@@ -1,18 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseUnits, formatUnits } from 'viem';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { AmongNadsABI } from '@/lib/abi/AmongNads';
-import { MockUSDCABI } from '@/lib/abi/MockUSDC';
-import { AMONG_NADS_ADDRESS, MOCK_USDC_ADDRESS } from '@/lib/contracts';
+import { AMONG_NADS_ADDRESS } from '@/lib/contracts';
 import { useUserBet } from '@/hooks/useUserBet';
 import { useUnclaimedPayouts } from '@/hooks/useUnclaimedPayouts';
 
 const Team = { Crewmates: 0, Impostors: 1 } as const;
 const teamName = (t: number | null) => (t === 0 ? 'Crewmates' : t === 1 ? 'Impostors' : '—');
-const formatUsdc = (raw: string | null) => raw ? (Number(raw) / 1e6).toFixed(2) : '0';
+const formatMon = (raw: bigint | undefined) => raw ? Number(formatEther(raw)).toFixed(4) : '0';
 
 interface BettingPanelProps {
     phase: string;
@@ -30,14 +29,12 @@ const formatBetTimer = (secs: number) => `${Math.floor(secs / 60)}:${(secs % 60)
 export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false, bettingTimer = 0, bettingOpensIn = 0 }: BettingPanelProps) {
     const { address, isConnected } = useAccount();
 
-    // ── USDC wallet balance ──
-    const { data: usdcBalance } = useReadContract({
-        address: MOCK_USDC_ADDRESS,
-        abi: MockUSDCABI,
-        functionName: 'balanceOf',
-        args: address ? [address] : undefined,
+
+    const { data: balanceData } = useBalance({
+        address: address,
         query: { enabled: isConnected && !!address, refetchInterval: 10000 },
     });
+    const monBalance = balanceData?.value ?? BigInt(0);
 
     // ── On-chain game data (for payout calculation) ──
     const { data: gameData } = useReadContract({
@@ -62,13 +59,14 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
     const [showCurrentSuccess, setShowCurrentSuccess] = useState(false);
     const [showHistSuccess, setShowHistSuccess] = useState<string | null>(null);
 
-    // ── Approve USDC tx ──
-    const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending, error: approveError } = useWriteContract();
-    const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
+
+
+    // ── optimistic pending state (bridges tx confirmed → subgraph lag) ──
+    const [pendingBetTeam, setPendingBetTeam] = useState<BetTeam>(null);
 
     // ── placeBet tx ──
     const { writeContract: writePlaceBet, data: placeBetHash, isPending: isPlaceBetPending, error: placeBetError } = useWriteContract();
-    const { isLoading: isPlaceBetConfirming } = useWaitForTransactionReceipt({ hash: placeBetHash });
+    const { isLoading: isPlaceBetConfirming, isSuccess: isPlaceBetSuccess } = useWaitForTransactionReceipt({ hash: placeBetHash });
 
     // ── claimPayout tx (current game) ──
     const { writeContract: writeClaim, data: claimHash, isPending: isClaimPending, error: claimError } = useWriteContract();
@@ -99,19 +97,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
         }
     }, [isClaimSuccess]);
 
-    // Auto-trigger placeBet after approve succeeds
-    useEffect(() => {
-        if (isApproveSuccess && selectedTeam && amount && onChainGameId) {
-            const teamValue = selectedTeam === 'Crewmates' ? Team.Crewmates : Team.Impostors;
-            const amountInUsdc = parseUnits(amount, 6);
-            writePlaceBet({
-                address: AMONG_NADS_ADDRESS,
-                abi: AmongNadsABI,
-                functionName: 'placeBet',
-                args: [BigInt(onChainGameId), teamValue, amountInUsdc],
-            });
-        }
-    }, [isApproveSuccess]);
+
 
     // Reset UI when new lobby starts
     useEffect(() => {
@@ -136,16 +122,27 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
         return (betAmount * distributable) / winningPool;
     })();
 
+    // Clear pendingBetTeam once subgraph confirms the bet
+    useEffect(() => {
+        if (userBet.hasBet && pendingBetTeam) {
+            setPendingBetTeam(null);
+        }
+    }, [userBet.hasBet, pendingBetTeam]);
+
     // ── handlers ──
     const handlePlaceBet = () => {
-        if (!selectedTeam || !amount || parseFloat(amount) < 1) return;
+        if (!selectedTeam || !amount || parseFloat(amount) < 0.001) return;
         if (!onChainGameId) return;
-        const amountInUsdc = parseUnits(amount, 6);
-        writeApprove({
-            address: MOCK_USDC_ADDRESS,
-            abi: MockUSDCABI,
-            functionName: 'approve',
-            args: [AMONG_NADS_ADDRESS, amountInUsdc],
+        const amountInWei = parseEther(amount);
+        const teamValue = selectedTeam === 'Crewmates' ? Team.Crewmates : Team.Impostors;
+
+        setPendingBetTeam(selectedTeam);
+        writePlaceBet({
+            address: AMONG_NADS_ADDRESS,
+            abi: AmongNadsABI,
+            functionName: 'placeBet',
+            args: [BigInt(onChainGameId), teamValue],
+            value: amountInWei,
         });
     };
 
@@ -169,13 +166,13 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
         });
     };
 
-    const isPlacingBet = isApprovePending || isApproveConfirming || isPlaceBetPending || isPlaceBetConfirming;
+    const isPlacingBet = isPlaceBetPending || isPlaceBetConfirming;
     const betTeamLabel = teamName(userBet.team);
-    const betAmountLabel = formatUsdc(userBet.amount);
-    const usdcBalanceFormatted = usdcBalance != null ? Number(formatUnits(usdcBalance as bigint, 6)).toFixed(2) : '—';
-    const hasZeroUsdc = isConnected && usdcBalance != null && (usdcBalance as bigint) === BigInt(0);
+    const betAmountLabel = formatEther(BigInt(userBet.amount || 0));
+    const monBalanceFormatted = formatMon(monBalance);
+    const hasZeroMon = isConnected && monBalance === BigInt(0);
     const canClaim = userBet.result === 'win' && !userBet.hasClaimed && !isClaimSuccess;
-    const payoutFormatted = estimatedPayout ? Number(formatUnits(estimatedPayout, 6)).toFixed(2) : betAmountLabel;
+    const payoutFormatted = estimatedPayout ? Number(formatEther(estimatedPayout)).toFixed(4) : betAmountLabel;
 
     // Filter out already-claimed-this-session games from unclaimed list
     const visibleUnclaimed = unclaimed.payouts.filter(
@@ -189,18 +186,18 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
 
     const balanceBar = isConnected ? (
         <div className="flex justify-between items-center p-2 bg-[#0d2137]/60 rounded-sm mb-3">
-            <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">USDC Balance</div>
+            <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">MON Balance</div>
             <div className="text-[9px] font-pixel text-[#88d8b0] text-glow-mint">
-                {usdcBalanceFormatted} <span className="text-[#a8d8ea]/40">USDC</span>
+                {monBalanceFormatted} <span className="text-[#a8d8ea]/40">MON</span>
             </div>
         </div>
     ) : null;
 
     // ── Zero balance warning ──
-    const zeroBalanceWarning = hasZeroUsdc ? (
+    const zeroBalanceWarning = hasZeroMon ? (
         <div className="flex items-center gap-2 p-2.5 bg-[#ffd700]/5 border border-[#ffd700]/20 rounded-sm mb-3">
             <div className="text-[7px] font-pixel text-[#ffd700]">
-                You have 0 USDC.{' '}
+                You have 0 MON.{' '}
                 <a href="/faucet" className="underline hover:text-[#ffed4a] transition-colors">
                     Claim from faucet
                 </a>{' '}
@@ -249,7 +246,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                                     Round #{onChainGameId} — {teamName(userBet.team)}
                                 </div>
                                 <div className="text-[9px] font-pixel text-[#88d8b0] text-glow-mint">
-                                    ~{payoutFormatted} <span className="text-[#a8d8ea]/40">USDC</span>
+                                    ~{payoutFormatted} <span className="text-[#a8d8ea]/40">MON</span>
                                 </div>
                             </div>
                             <button
@@ -296,7 +293,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                                         Round #{payout.gameId} — {teamName(payout.team)}
                                     </div>
                                     <div className="text-[9px] font-pixel text-[#88d8b0]">
-                                        {formatUsdc(payout.betAmount)} <span className="text-[#a8d8ea]/40">USDC bet</span>
+                                        {formatEther(BigInt(payout.betAmount))} <span className="text-[#a8d8ea]/40">MON bet</span>
                                     </div>
                                 </div>
                                 <button
@@ -333,6 +330,47 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
     // MAIN CONTENT — varies by state
     // ══════════════════════════════════════════════════════════════════════════
 
+    // ── SYNCING: tx confirmed on-chain but subgraph hasn't indexed yet ──
+    if (isPlaceBetSuccess && pendingBetTeam && !userBet.hasBet) {
+        const syncTeamColor = pendingBetTeam === 'Crewmates' ? '#a8d8ea' : '#ff6b6b';
+        return (
+            <div className="retro-panel p-4 flex flex-col h-full">
+                {balanceBar}
+                <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                    {/* Spinner */}
+                    <div className="relative w-12 h-12">
+                        <div className="absolute inset-0 rounded-full border-2 border-[#ffd700]/10" />
+                        <div className="absolute inset-0 rounded-full border-2 border-t-[#ffd700] animate-spin" />
+                    </div>
+
+                    <div className="text-[9px] font-pixel text-[#ffd700] text-glow-gold animate-pulse uppercase tracking-wider">
+                        Syncing...
+                    </div>
+
+                    <div
+                        className="w-full rounded-sm border p-3 text-center"
+                        style={{ backgroundColor: `${syncTeamColor}15`, borderColor: `${syncTeamColor}40` }}
+                    >
+                        <div className="text-[9px] font-pixel" style={{ color: syncTeamColor }}>
+                            {pendingBetTeam}
+                        </div>
+                        <div className="text-[7px] font-pixel text-[#a8d8ea]/40 mt-0.5 uppercase tracking-wider">
+                            Bet Confirmed On-Chain
+                        </div>
+                    </div>
+
+                    <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center leading-relaxed">
+                        Waiting for subgraph to index...
+                    </div>
+                </div>
+                <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
+                    Round #{onChainGameId}
+                </div>
+                {claimSection}
+            </div>
+        );
+    }
+
     // ── RESULT: game settled + user has bet → WIN/LOSE banner ──
     if (userBet.result && userBet.winningTeam !== null) {
         const isWin = userBet.result === 'win';
@@ -353,7 +391,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                         {isWin ? 'YOU WON' : 'YOU LOST'}
                     </div>
                     <div className="text-[8px] font-pixel text-[#a8d8ea]/60 text-center">
-                        You bet <span className="text-[#ffd700]">{betAmountLabel} USDC</span> on{' '}
+                        You bet <span className="text-[#ffd700]">{betAmountLabel} MON</span> on{' '}
                         <span className={betTeamLabel === 'Crewmates' ? 'text-[#a8d8ea]' : 'text-[#ff6b6b]'}>
                             {betTeamLabel}
                         </span>
@@ -391,7 +429,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                         <div className="text-[7px] font-pixel text-[#ffd700]/50 mt-0.5">LOCKED IN</div>
                     </div>
                     <div className="text-[8px] font-pixel text-[#a8d8ea]/60 text-center">
-                        <span className="text-[#ffd700]">{betAmountLabel} USDC</span> deposited
+                        <span className="text-[#ffd700]">{betAmountLabel} MON</span> deposited
                     </div>
                     <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center">
                         Waiting for game to end...
@@ -428,7 +466,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                         </div>
                     </div>
                     <div className="text-[8px] font-pixel text-[#a8d8ea]/60">
-                        <span className="text-[#ffd700]">{betAmountLabel} USDC</span> on the line
+                        <span className="text-[#ffd700]">{betAmountLabel} MON</span> on the line
                     </div>
 
                 </div>
@@ -483,7 +521,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
 
             <div className="mb-3">
                 <div className="text-[8px] font-pixel text-[#ffd700] uppercase tracking-widest mb-1 text-glow-gold">Predict the Winner</div>
-                <div className="text-[7px] font-pixel text-[#a8d8ea]/40">Deposit USDC to place your bet</div>
+                <div className="text-[7px] font-pixel text-[#a8d8ea]/40">Deposit MON to place your bet</div>
             </div>
 
             {/* Team selector */}
@@ -512,21 +550,21 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
 
             {/* Amount input */}
             <div className="mb-4">
-                <label className="text-[7px] font-pixel text-[#a8d8ea]/40 uppercase tracking-wider mb-1 block">Amount (USDC)</label>
+                <label className="text-[7px] font-pixel text-[#a8d8ea]/40 uppercase tracking-wider mb-1 block">Amount (MON)</label>
                 <div className="relative">
                     <input
                         type="number"
-                        min="1"
-                        step="1"
+                        min="0.001"
+                        step="0.001"
                         value={amount}
                         onChange={(e) => bettingOpen && !isPlacingBet && setAmount(e.target.value)}
                         placeholder="0"
                         disabled={!bettingOpen || isPlacingBet}
                         className="w-full bg-[#0a1628] border border-[#ffd700]/20 text-white rounded-sm px-3 py-2 pr-16 text-[10px] font-pixel focus:outline-none focus:border-[#ffd700]/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-pixel text-[#a8d8ea]/40">USDC</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-pixel text-[#a8d8ea]/40">MON</span>
                 </div>
-                <div className="text-[7px] font-pixel text-[#a8d8ea]/30 mt-1">Min: 1 USDC</div>
+                <div className="text-[7px] font-pixel text-[#a8d8ea]/30 mt-1">Min: 0.001 MON | Max: 0.1 MON</div>
             </div>
 
             {/* Place bet OR Connect Wallet */}
@@ -541,21 +579,19 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                             <>
                                 <button
                                     onClick={handlePlaceBet}
-                                    disabled={!bettingOpen || !selectedTeam || !amount || parseFloat(amount) < 1 || isPlacingBet || !onChainGameId}
+                                    disabled={!bettingOpen || !selectedTeam || !amount || parseFloat(amount) < 0.001 || isPlacingBet || !onChainGameId}
                                     className="w-full py-2.5 rounded-sm text-[8px] font-pixel uppercase tracking-wider transition-all
                                         bg-[#ff6b6b] hover:bg-[#ff8a8a] text-[#0a1628]
                                         pixel-border
                                         disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
-                                    {isApprovePending ? 'Approving USDC...'
-                                        : isApproveConfirming ? 'Confirming Approve...'
-                                        : isPlaceBetPending ? 'Placing Bet...'
+                                    {isPlaceBetPending ? 'Placing Bet...'
                                         : isPlaceBetConfirming ? 'Confirming Bet...'
                                         : 'Place Bet'}
                                 </button>
-                                {(approveError || placeBetError) && (
+                                    {placeBetError && (
                                     <div className="text-[7px] font-pixel text-[#ff6b6b] text-center mt-1 truncate">
-                                        {(approveError || placeBetError)?.message?.slice(0, 60)}
+                                        {placeBetError?.message?.slice(0, 60)}
                                     </div>
                                 )}
                             </>

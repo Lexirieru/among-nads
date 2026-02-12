@@ -136,7 +136,7 @@ export class GameEngine {
   private movementInterval: NodeJS.Timeout | null = null;
   private commentStreamInterval: NodeJS.Timeout | null = null;
   public phaseTimer: number = 0; // seconds remaining in current phase
-  private readonly LOBBY_TIME = 60; // 1 minute lobby
+  private readonly LOBBY_TIME = 180; // 3 minute lobby
   private readonly GAME_TIME = 240; // 4 minutes
   private readonly BET_LOCK_TIME = 120; // lock bets 2 min into ACTION (when timer = GAME_TIME - 120 = 120s left)
   private readonly MEETING_TIME = 15; // Fast meetings for sim

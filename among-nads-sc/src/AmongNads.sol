@@ -3,13 +3,19 @@ pragma solidity ^0.8.30;
 
 import "./interfaces/IAmongNads.sol";
 import "./interfaces/IERC20.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {
+    OwnableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {
+    UUPSUpgradeable
+} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title AmongNads Prediction Market (v3 — Rolling House Pool, UUPS Upgradeable)
- * @notice ERC20-based prediction betting with a house-pool (bandar) model.
+ * @notice ERC20-based prediction betting with a house-pool model.
  *
  * Key features:
  *   - Rolling house pool: owner deposits USDC once, reuses across games.
@@ -28,22 +34,30 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  *   6. Winners call claimPayout(gameId)
  *   7. Owner calls sweep(amount) to withdraw profit anytime
  */
-contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract AmongNads is
+    IAmongNads,
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable
+{
     // ── Constants ────────────────────────────────────────────────────────────
 
-    /// @notice Minimum bet size: 1 USDC (6 decimals)
-    uint256 public constant MIN_BET = 1e6;
+    /// @notice Minimum bet size: 0.001 MON (1e15)
+    uint256 public constant MIN_BET = 0.001 ether;
+
+    /// @notice Maximum bet size: 0.1 MON (1e17) to prevent whale dominance
+    uint256 public constant MAX_BET = 0.1 ether;
 
     /// @notice Protocol fee in basis-points (5 % = 500 bps out of 10 000)
     uint256 public constant PROTOCOL_FEE_BPS = 500;
 
+    /// @notice Duration of the lobby phase in seconds (3 minutes)
+    uint256 public constant LOBBY_DURATION = 180;
+
     // ── State ────────────────────────────────────────────────────────────────
 
-    /// @notice Auto-incrementing game counter. Next game will use this ID.
+    /// @notice Counter for game IDs.
     uint256 public nextGameId;
-
-    /// @notice ERC20 token used for betting (e.g. USDC). Set by owner via setBetToken().
-    IERC20 public betToken;
 
     /// @notice Owner's rolling house-pool balance inside this contract.
     uint256 public houseBalance;
@@ -71,30 +85,21 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    // ── Owner Configuration ─────────────────────────────────────────────────
-
-    /// @notice Set the ERC20 token used for betting. Can only be called by owner.
-    function setBetToken(address _token) external onlyOwner {
-        betToken = IERC20(_token);
-        emit BetTokenSet(_token);
-    }
-
     // ── House Pool (Rolling Pool) ───────────────────────────────────────────
 
-    /// @notice Owner deposits USDC into the rolling house pool. Call once, reuse across games.
-    function deposit(uint256 amount) external override onlyOwner {
-        if (address(betToken) == address(0)) revert BetTokenNotSet();
-        bool ok = betToken.transferFrom(msg.sender, address(this), amount);
-        if (!ok) revert TransferFailed();
-        houseBalance += amount;
-        emit Deposited(amount);
+    /// @notice Owner deposits MON into the rolling house pool. Call once, reuse across games.
+    function deposit() external payable override onlyOwner {
+        houseBalance += msg.value;
+        emit Deposited(msg.value);
     }
 
-    /// @notice Allocate from houseBalance into a game's pools. No USDC transfer — just accounting.
+    /// @notice Allocate from houseBalance into a game's pools. No transfer — just accounting.
     ///         Auto-creates the game if it doesn't exist yet.
-    function seedPool(uint256 gameId, uint256 crewAmount, uint256 impAmount)
-        external override onlyOwner
-    {
+    function seedPool(
+        uint256 gameId,
+        uint256 crewAmount,
+        uint256 impAmount
+    ) external override onlyOwner {
         uint256 total = crewAmount + impAmount;
         if (houseBalance < total)
             revert InsufficientHouseBalance(houseBalance, total);
@@ -115,27 +120,27 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
         game.impostorsPool += impAmount;
         game.crewmatesSeed += crewAmount;
         game.impostorsSeed += impAmount;
-        game.totalPool     += total;
+        game.totalPool += total;
 
         emit PoolSeeded(gameId, crewAmount, impAmount);
     }
 
-    /// @notice Owner withdraws USDC from houseBalance.
+    /// @notice Owner withdraws MON from houseBalance.
     function sweep(uint256 amount) external override onlyOwner {
         if (houseBalance < amount)
             revert InsufficientHouseBalance(houseBalance, amount);
         houseBalance -= amount;
-        bool ok = betToken.transfer(owner(), amount);
+
+        (bool ok, ) = owner().call{value: amount}("");
         if (!ok) revert TransferFailed();
+
         emit Swept(amount);
     }
 
     // ── Oracle Functions ─────────────────────────────────────────────────────
 
     /// @inheritdoc IAmongNads
-    function lockGame(uint256 gameId)
-        external override onlyOwner
-    {
+    function lockGame(uint256 gameId) external override onlyOwner {
         if (games[gameId].state != GameState.Open)
             revert InvalidGameState(gameId, games[gameId].state);
 
@@ -145,20 +150,21 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
 
     /// @inheritdoc IAmongNads
     /// @dev Fee + seed's winning share are returned to houseBalance (no external transfer).
-    function settleGame(uint256 gameId, Team winningTeam)
-        external override onlyOwner
-    {
+    function settleGame(
+        uint256 gameId,
+        Team winningTeam
+    ) external override onlyOwner {
         if (games[gameId].state != GameState.Locked)
             revert InvalidGameState(gameId, games[gameId].state);
 
         Game storage game = games[gameId];
-        game.state       = GameState.Settled;
+        game.state = GameState.Settled;
         game.winningTeam = winningTeam;
 
-        uint256 fee           = (game.totalPool * PROTOCOL_FEE_BPS) / 10_000;
+        uint256 fee = (game.totalPool * PROTOCOL_FEE_BPS) / 10_000;
         uint256 distributable = game.totalPool - fee;
 
-        uint256 winningPool   = (winningTeam == Team.Crewmates)
+        uint256 winningPool = (winningTeam == Team.Crewmates)
             ? game.crewmatesPool
             : game.impostorsPool;
         uint256 seedInWinning = (winningTeam == Team.Crewmates)
@@ -178,11 +184,11 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
     // ── Bettor Functions ─────────────────────────────────────────────────────
 
     /// @inheritdoc IAmongNads
-    function placeBet(uint256 gameId, Team team, uint256 amount)
-        external override
-    {
-        if (address(betToken) == address(0)) revert BetTokenNotSet();
+    function placeBet(uint256 gameId, Team team) external payable override {
+        uint256 amount = msg.value;
+
         if (amount < MIN_BET) revert BetBelowMinimum(amount, MIN_BET);
+        if (amount > MAX_BET) revert BetExceedsMaximum(amount, MAX_BET);
 
         // Lazy game creation: first bet for this gameId auto-creates it
         if (games[gameId].state == GameState.Uninitialized) {
@@ -190,26 +196,27 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
             _createGame();
         }
 
-        if (games[gameId].state != GameState.Open)
-            revert InvalidGameState(gameId, games[gameId].state);
+        Game storage game = games[gameId];
+
+        if (game.state != GameState.Open)
+            revert InvalidGameState(gameId, game.state);
+
+        // DEADLINE CHECK (Anti-Cheat)
+        if (block.timestamp > game.bettingDeadline)
+            revert BettingDeadlinePassed(gameId, game.bettingDeadline);
 
         if (bets[gameId][msg.sender].bettor != address(0))
             revert AlreadyBet(msg.sender);
 
-        // Pull USDC from bettor (requires prior approval)
-        bool ok = betToken.transferFrom(msg.sender, address(this), amount);
-        if (!ok) revert TransferFailed();
-
         // Record bet
         bets[gameId][msg.sender] = Bet({
-            bettor:  msg.sender,
-            team:    team,
-            amount:  amount,
+            bettor: msg.sender,
+            team: team,
+            amount: amount,
             claimed: false
         });
 
         // Update pool counters
-        Game storage game = games[gameId];
         game.totalPool += amount;
         if (team == Team.Crewmates) {
             game.crewmatesPool += amount;
@@ -226,8 +233,8 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
             revert InvalidGameState(gameId, games[gameId].state);
 
         Bet storage bet = bets[gameId][msg.sender];
-        if (bet.bettor == address(0))  revert NoBetToClaim(msg.sender);
-        if (bet.claimed)               revert AlreadyClaimed(msg.sender);
+        if (bet.bettor == address(0)) revert NoBetToClaim(msg.sender);
+        if (bet.claimed) revert AlreadyClaimed(msg.sender);
 
         bet.claimed = true;
 
@@ -237,7 +244,7 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
         }
 
         Game memory game = games[gameId];
-        uint256 protocolFee   = (game.totalPool * PROTOCOL_FEE_BPS) / 10_000;
+        uint256 protocolFee = (game.totalPool * PROTOCOL_FEE_BPS) / 10_000;
         uint256 distributable = game.totalPool - protocolFee;
 
         uint256 winningPool = (game.winningTeam == Team.Crewmates)
@@ -246,7 +253,7 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         uint256 payout = (bet.amount * distributable) / winningPool;
 
-        bool ok = betToken.transfer(msg.sender, payout);
+        (bool ok, ) = msg.sender.call{value: payout}("");
         if (!ok) revert TransferFailed();
 
         emit PayoutClaimed(gameId, msg.sender, payout);
@@ -257,27 +264,33 @@ contract AmongNads is IAmongNads, Initializable, OwnableUpgradeable, UUPSUpgrade
     function _createGame() internal {
         uint256 gameId = nextGameId++;
         games[gameId] = Game({
-            id:            gameId,
-            state:         GameState.Open,
-            totalPool:     0,
+            id: gameId,
+            state: GameState.Open,
+            bettingDeadline: uint64(block.timestamp + LOBBY_DURATION),
+            totalPool: 0,
             crewmatesPool: 0,
             impostorsPool: 0,
             crewmatesSeed: 0,
             impostorsSeed: 0,
-            winningTeam:   Team.Crewmates // placeholder
+            winningTeam: Team.Crewmates // placeholder
         });
-        emit GameCreated(gameId);
+        emit GameCreated(gameId, uint64(block.timestamp + LOBBY_DURATION));
     }
 
     // ── Views ────────────────────────────────────────────────────────────────
 
     /// @inheritdoc IAmongNads
-    function getGame(uint256 gameId) external view override returns (Game memory) {
+    function getGame(
+        uint256 gameId
+    ) external view override returns (Game memory) {
         return games[gameId];
     }
 
     /// @inheritdoc IAmongNads
-    function getBet(uint256 gameId, address bettor) external view override returns (Bet memory) {
+    function getBet(
+        uint256 gameId,
+        address bettor
+    ) external view override returns (Bet memory) {
         return bets[gameId][bettor];
     }
 

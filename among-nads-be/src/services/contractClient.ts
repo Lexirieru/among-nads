@@ -103,9 +103,13 @@ class ContractClient {
 
     this.contractAddress = contractAddr as Address;
 
-    // Default seed: 500 USDC each side. Override with SEED_CREWMATES / SEED_IMPOSTORS env vars.
-    this.seedCrewmates = BigInt(process.env.SEED_CREWMATES || "500000000"); // 500e6
-    this.seedImpostors = BigInt(process.env.SEED_IMPOSTORS || "500000000"); // 500e6
+    // Default seed: 1 MON each side. Override with SEED_CREWMATES / SEED_IMPOSTORS env vars.
+    this.seedCrewmates = BigInt(
+      process.env.SEED_CREWMATES || "1000000000000000000",
+    ); // 1 MON
+    this.seedImpostors = BigInt(
+      process.env.SEED_IMPOSTORS || "1000000000000000000",
+    ); // 1 MON
 
     console.log(
       `[ContractClient] Connected to AmongNads @ ${this.contractAddress}`,

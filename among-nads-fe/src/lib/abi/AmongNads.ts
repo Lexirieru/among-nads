@@ -1,726 +1,570 @@
 export const AmongNadsABI = [
+  { inputs: [], stateMutability: "nonpayable", type: "constructor" },
   {
-    type: "constructor",
-    inputs: [],
-    stateMutability: "nonpayable",
+    inputs: [{ internalType: "address", name: "target", type: "address" }],
+    name: "AddressEmptyCode",
+    type: "error",
   },
   {
+    inputs: [{ internalType: "address", name: "bettor", type: "address" }],
     name: "AlreadyBet",
     type: "error",
-    inputs: [
-      {
-        name: "bettor",
-        type: "address",
-        internalType: "address",
-      },
-    ],
   },
   {
+    inputs: [{ internalType: "address", name: "bettor", type: "address" }],
     name: "AlreadyClaimed",
     type: "error",
-    inputs: [
-      {
-        name: "bettor",
-        type: "address",
-        internalType: "address",
-      },
-    ],
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "sent", type: "uint256" },
+      { internalType: "uint256", name: "minimum", type: "uint256" },
+    ],
     name: "BetBelowMinimum",
     type: "error",
+  },
+  {
     inputs: [
-      {
-        name: "sent",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "minimum",
-        type: "uint256",
-        internalType: "uint256",
-      },
+      { internalType: "uint256", name: "sent", type: "uint256" },
+      { internalType: "uint256", name: "maximum", type: "uint256" },
     ],
-  },
-  {
-    name: "BetTokenNotSet",
+    name: "BetExceedsMaximum",
     type: "error",
-    inputs: [],
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "gameId", type: "uint256" },
+      { internalType: "uint64", name: "deadline", type: "uint64" },
+    ],
+    name: "BettingDeadlinePassed",
+    type: "error",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "implementation", type: "address" },
+    ],
+    name: "ERC1967InvalidImplementation",
+    type: "error",
+  },
+  { inputs: [], name: "ERC1967NonPayable", type: "error" },
+  { inputs: [], name: "FailedCall", type: "error" },
+  {
+    inputs: [
+      { internalType: "uint256", name: "available", type: "uint256" },
+      { internalType: "uint256", name: "required", type: "uint256" },
+    ],
     name: "InsufficientHouseBalance",
     type: "error",
-    inputs: [
-      {
-        name: "available",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "required",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
   },
   {
+    inputs: [{ internalType: "uint256", name: "gameId", type: "uint256" }],
     name: "InvalidGameId",
     type: "error",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
   },
   {
-    name: "InvalidGameState",
-    type: "error",
     inputs: [
+      { internalType: "uint256", name: "gameId", type: "uint256" },
       {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
+        internalType: "enum IAmongNads.GameState",
         name: "current",
         type: "uint8",
-        internalType: "enum IAmongNads.GameState",
       },
     ],
+    name: "InvalidGameState",
+    type: "error",
   },
+  { inputs: [], name: "InvalidInitialization", type: "error" },
   {
+    inputs: [{ internalType: "address", name: "bettor", type: "address" }],
     name: "NoBetToClaim",
     type: "error",
+  },
+  { inputs: [], name: "NotInitializing", type: "error" },
+  {
+    inputs: [{ internalType: "address", name: "owner", type: "address" }],
+    name: "OwnableInvalidOwner",
+    type: "error",
+  },
+  {
+    inputs: [{ internalType: "address", name: "account", type: "address" }],
+    name: "OwnableUnauthorizedAccount",
+    type: "error",
+  },
+  { inputs: [], name: "TransferFailed", type: "error" },
+  { inputs: [], name: "UUPSUnauthorizedCallContext", type: "error" },
+  {
+    inputs: [{ internalType: "bytes32", name: "slot", type: "bytes32" }],
+    name: "UUPSUnsupportedProxiableUUID",
+    type: "error",
+  },
+  {
+    anonymous: false,
     inputs: [
       {
+        indexed: true,
+        internalType: "uint256",
+        name: "gameId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
         name: "bettor",
         type: "address",
-        internalType: "address",
+      },
+      {
+        indexed: false,
+        internalType: "enum IAmongNads.Team",
+        name: "team",
+        type: "uint8",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
       },
     ],
-  },
-  {
-    name: "NotOwner",
-    type: "error",
-    inputs: [],
-  },
-  {
-    name: "TransferFailed",
-    type: "error",
-    inputs: [],
-  },
-  {
     name: "BetPlaced",
     type: "event",
+  },
+  {
+    anonymous: false,
     inputs: [
       {
-        name: "gameId",
-        type: "uint256",
-        indexed: true,
-        internalType: "uint256",
-      },
-      {
-        name: "bettor",
-        type: "address",
-        indexed: true,
-        internalType: "address",
-      },
-      {
-        name: "team",
-        type: "uint8",
         indexed: false,
-        internalType: "enum IAmongNads.Team",
-      },
-      {
+        internalType: "uint256",
         name: "amount",
         type: "uint256",
-        indexed: false,
-        internalType: "uint256",
       },
     ],
-    anonymous: false,
-  },
-  {
-    name: "BetTokenSet",
-    type: "event",
-    inputs: [
-      {
-        name: "token",
-        type: "address",
-        indexed: true,
-        internalType: "address",
-      },
-    ],
-    anonymous: false,
-  },
-  {
     name: "Deposited",
     type: "event",
-    inputs: [
-      {
-        name: "amount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-    ],
-    anonymous: false,
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "gameId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint64",
+        name: "bettingDeadline",
+        type: "uint64",
+      },
+    ],
     name: "GameCreated",
     type: "event",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        indexed: true,
-        internalType: "uint256",
-      },
-    ],
-    anonymous: false,
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "gameId",
+        type: "uint256",
+      },
+    ],
     name: "GameLocked",
     type: "event",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        indexed: true,
-        internalType: "uint256",
-      },
-    ],
-    anonymous: false,
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "gameId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "enum IAmongNads.Team",
+        name: "winningTeam",
+        type: "uint8",
+      },
+    ],
     name: "GameSettled",
     type: "event",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        indexed: true,
-        internalType: "uint256",
-      },
-      {
-        name: "winningTeam",
-        type: "uint8",
-        indexed: false,
-        internalType: "enum IAmongNads.Team",
-      },
-    ],
-    anonymous: false,
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "uint64",
+        name: "version",
+        type: "uint64",
+      },
+    ],
+    name: "Initialized",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "previousOwner",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "newOwner",
+        type: "address",
+      },
+    ],
+    name: "OwnershipTransferred",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "gameId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "bettor",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
     name: "PayoutClaimed",
     type: "event",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        indexed: true,
-        internalType: "uint256",
-      },
-      {
-        name: "bettor",
-        type: "address",
-        indexed: true,
-        internalType: "address",
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-    ],
-    anonymous: false,
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "gameId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "crewAmount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "impAmount",
+        type: "uint256",
+      },
+    ],
     name: "PoolSeeded",
     type: "event",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        indexed: true,
-        internalType: "uint256",
-      },
-      {
-        name: "crewAmount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-      {
-        name: "impAmount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-    ],
-    anonymous: false,
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
     name: "Swept",
     type: "event",
-    inputs: [
-      {
-        name: "amount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-    ],
+  },
+  {
     anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "implementation",
+        type: "address",
+      },
+    ],
+    name: "Upgraded",
+    type: "event",
   },
   {
+    inputs: [],
+    name: "LOBBY_DURATION",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "MAX_BET",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "MIN_BET",
-    type: "function",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [],
     name: "PROTOCOL_FEE_BPS",
-    type: "function",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
+    type: "function",
   },
   {
-    name: "betToken",
-    type: "function",
     inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "contract IERC20",
-      },
-    ],
+    name: "UPGRADE_INTERFACE_VERSION",
+    outputs: [{ internalType: "string", name: "", type: "string" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "address", name: "", type: "address" },
+    ],
     name: "bets",
-    type: "function",
-    inputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "",
-        type: "address",
-        internalType: "address",
-      },
-    ],
     outputs: [
-      {
-        name: "bettor",
-        type: "address",
-        internalType: "address",
-      },
-      {
-        name: "team",
-        type: "uint8",
-        internalType: "enum IAmongNads.Team",
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "claimed",
-        type: "bool",
-        internalType: "bool",
-      },
+      { internalType: "address", name: "bettor", type: "address" },
+      { internalType: "enum IAmongNads.Team", name: "team", type: "uint8" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "bool", name: "claimed", type: "bool" },
     ],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "gameId", type: "uint256" }],
     name: "claimPayout",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
   },
   {
+    inputs: [],
     name: "deposit",
-    type: "function",
-    inputs: [
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
+    type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     name: "games",
-    type: "function",
-    inputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [
+      { internalType: "uint256", name: "id", type: "uint256" },
       {
-        name: "id",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
+        internalType: "enum IAmongNads.GameState",
         name: "state",
         type: "uint8",
-        internalType: "enum IAmongNads.GameState",
       },
+      { internalType: "uint64", name: "bettingDeadline", type: "uint64" },
+      { internalType: "uint256", name: "totalPool", type: "uint256" },
+      { internalType: "uint256", name: "crewmatesPool", type: "uint256" },
+      { internalType: "uint256", name: "impostorsPool", type: "uint256" },
+      { internalType: "uint256", name: "crewmatesSeed", type: "uint256" },
+      { internalType: "uint256", name: "impostorsSeed", type: "uint256" },
       {
-        name: "totalPool",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "crewmatesPool",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "impostorsPool",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "crewmatesSeed",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "impostorsSeed",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
+        internalType: "enum IAmongNads.Team",
         name: "winningTeam",
         type: "uint8",
-        internalType: "enum IAmongNads.Team",
       },
     ],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "gameId", type: "uint256" },
+      { internalType: "address", name: "bettor", type: "address" },
+    ],
     name: "getBet",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "bettor",
-        type: "address",
-        internalType: "address",
-      },
-    ],
     outputs: [
       {
+        components: [
+          { internalType: "address", name: "bettor", type: "address" },
+          { internalType: "enum IAmongNads.Team", name: "team", type: "uint8" },
+          { internalType: "uint256", name: "amount", type: "uint256" },
+          { internalType: "bool", name: "claimed", type: "bool" },
+        ],
+        internalType: "struct IAmongNads.Bet",
         name: "",
         type: "tuple",
-        internalType: "struct IAmongNads.Bet",
-        components: [
-          {
-            name: "bettor",
-            type: "address",
-            internalType: "address",
-          },
-          {
-            name: "team",
-            type: "uint8",
-            internalType: "enum IAmongNads.Team",
-          },
-          {
-            name: "amount",
-            type: "uint256",
-            internalType: "uint256",
-          },
-          {
-            name: "claimed",
-            type: "bool",
-            internalType: "bool",
-          },
-        ],
       },
     ],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "gameId", type: "uint256" }],
     name: "getGame",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [
       {
-        name: "",
-        type: "tuple",
-        internalType: "struct IAmongNads.Game",
         components: [
+          { internalType: "uint256", name: "id", type: "uint256" },
           {
-            name: "id",
-            type: "uint256",
-            internalType: "uint256",
-          },
-          {
+            internalType: "enum IAmongNads.GameState",
             name: "state",
             type: "uint8",
-            internalType: "enum IAmongNads.GameState",
           },
+          { internalType: "uint64", name: "bettingDeadline", type: "uint64" },
+          { internalType: "uint256", name: "totalPool", type: "uint256" },
+          { internalType: "uint256", name: "crewmatesPool", type: "uint256" },
+          { internalType: "uint256", name: "impostorsPool", type: "uint256" },
+          { internalType: "uint256", name: "crewmatesSeed", type: "uint256" },
+          { internalType: "uint256", name: "impostorsSeed", type: "uint256" },
           {
-            name: "totalPool",
-            type: "uint256",
-            internalType: "uint256",
-          },
-          {
-            name: "crewmatesPool",
-            type: "uint256",
-            internalType: "uint256",
-          },
-          {
-            name: "impostorsPool",
-            type: "uint256",
-            internalType: "uint256",
-          },
-          {
-            name: "crewmatesSeed",
-            type: "uint256",
-            internalType: "uint256",
-          },
-          {
-            name: "impostorsSeed",
-            type: "uint256",
-            internalType: "uint256",
-          },
-          {
+            internalType: "enum IAmongNads.Team",
             name: "winningTeam",
             type: "uint8",
-            internalType: "enum IAmongNads.Team",
           },
         ],
+        internalType: "struct IAmongNads.Game",
+        name: "",
+        type: "tuple",
       },
     ],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "gameId", type: "uint256" }],
     name: "hasBets",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bool",
-        internalType: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "gameId", type: "uint256" }],
     name: "hasUserBets",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bool",
-        internalType: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [],
     name: "houseBalance",
-    type: "function",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [
+      { internalType: "address", name: "initialOwner", type: "address" },
+    ],
+    name: "initialize",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "gameId", type: "uint256" }],
     name: "lockGame",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
   },
   {
+    inputs: [],
     name: "nextGameId",
-    type: "function",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [],
     name: "owner",
-    type: "function",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "address",
-      },
-    ],
+    outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "gameId", type: "uint256" },
+      { internalType: "enum IAmongNads.Team", name: "team", type: "uint8" },
+    ],
     name: "placeBet",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "team",
-        type: "uint8",
-        internalType: "enum IAmongNads.Team",
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
+    type: "function",
   },
   {
+    inputs: [],
+    name: "proxiableUUID",
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "gameId", type: "uint256" },
+      { internalType: "uint256", name: "crewAmount", type: "uint256" },
+      { internalType: "uint256", name: "impAmount", type: "uint256" },
+    ],
     name: "seedPool",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "crewAmount",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "impAmount",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
   },
   {
-    name: "setBetToken",
-    type: "function",
     inputs: [
+      { internalType: "uint256", name: "gameId", type: "uint256" },
       {
-        name: "_token",
-        type: "address",
-        internalType: "address",
-      },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    name: "settleGame",
-    type: "function",
-    inputs: [
-      {
-        name: "gameId",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
+        internalType: "enum IAmongNads.Team",
         name: "winningTeam",
         type: "uint8",
-        internalType: "enum IAmongNads.Team",
       },
     ],
+    name: "settleGame",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "amount", type: "uint256" }],
     name: "sweep",
-    type: "function",
-    inputs: [
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "newOwner", type: "address" }],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newImplementation", type: "address" },
+      { internalType: "bytes", name: "data", type: "bytes" },
+    ],
+    name: "upgradeToAndCall",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
   },
 ] as const;
-
-export default AmongNadsABI;
