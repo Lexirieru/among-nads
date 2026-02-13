@@ -15,7 +15,7 @@ const monadTestnet = defineChain({
   rpcUrls: { default: { http: ["https://testnet-rpc.monad.xyz"] } },
 });
 
-// ── ABI — only the functions the oracle needs ───────────────────────────────
+// ── ABI — V2 (Native MON, Refactored) ─────────────────────────────────────────
 const AMONG_NADS_ABI = [
   {
     name: "nextGameId",
@@ -57,6 +57,20 @@ const AMONG_NADS_ABI = [
       { name: "gameId", type: "uint256" },
       { name: "winningTeam", type: "uint8" },
     ],
+    outputs: [],
+  },
+  {
+    name: "deposit",
+    type: "function" as const,
+    stateMutability: "payable" as const,
+    inputs: [],
+    outputs: [],
+  },
+  {
+    name: "cancelGame",
+    type: "function" as const,
+    stateMutability: "nonpayable" as const,
+    inputs: [{ name: "gameId", type: "uint256" }],
     outputs: [],
   },
 ] as const;

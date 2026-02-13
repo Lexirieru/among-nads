@@ -33,7 +33,7 @@ export default function LeaderboardPage() {
     const { address } = useAccount();
     const [rows, setRows] = useState<LeaderRow[]>([]);
     const [loading, setLoading] = useState(false);
-    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
 
     const fetchLeaderboard = useCallback(async () => {
         setLoading(true);
@@ -109,11 +109,12 @@ export default function LeaderboardPage() {
                     wins: e.wins,
                     winRate: e.settledGames.size > 0 ? Math.round((e.wins / e.settledGames.size) * 100) : 0,
                 }))
+                .filter((r) => r.games > 0) // Only show players with settled games (active PnL)
                 .sort((a, b) => (b.pnl > a.pnl ? 1 : b.pnl < a.pnl ? -1 : 0));
 
             result.forEach((r, i) => { r.rank = i + 1; });
             setRows(result);
-            setLastUpdated(new Date());
+
         } catch (err) {
             console.error('[Leaderboard] fetch failed:', err);
         } finally {
@@ -149,24 +150,12 @@ export default function LeaderboardPage() {
                             Leaderboard
                         </h1>
                         <p className="text-[7px] font-pixel text-[#a8d8ea]/40 mt-1">
-                            Ranked by PnL — live from Goldsky
+                            Ranked by PnL
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {lastUpdated && (
-                            <span className="text-[7px] font-pixel text-[#a8d8ea]/30">
-                                {lastUpdated.toLocaleTimeString()}
-                            </span>
-                        )}
-                        <button
-                            onClick={fetchLeaderboard}
-                            disabled={loading}
-                            className="px-3 py-1.5 rounded-sm text-[7px] font-pixel uppercase tracking-wider
-                                text-[#a8d8ea]/40 hover:text-[#a8d8ea] border border-[#a8d8ea]/10 hover:border-[#a8d8ea]/30
-                                transition-all disabled:opacity-40"
-                        >
-                            {loading ? '...' : 'Refresh'}
-                        </button>
+
+
                     </div>
                 </div>
 
@@ -194,14 +183,8 @@ export default function LeaderboardPage() {
                                 <div className="text-[10px] font-pixel text-[#88d8b0]">{myRow.winRate}%</div>
                                 <div className="text-[6px] font-pixel text-[#a8d8ea]/40 uppercase">Win Rate</div>
                             </div>
-                            <div className="text-center">
-                                <div className="text-[10px] font-pixel text-[#a8d8ea]">{fmtMonAbs(myRow.totalBet)}</div>
-                                <div className="text-[6px] font-pixel text-[#a8d8ea]/40 uppercase">Bet</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-[10px] font-pixel text-[#88d8b0]">{fmtMonAbs(myRow.totalClaimed)}</div>
-                                <div className="text-[6px] font-pixel text-[#a8d8ea]/40 uppercase">Claimed</div>
-                            </div>
+
+
                         </div>
                     </div>
                 )}
@@ -211,18 +194,17 @@ export default function LeaderboardPage() {
                     {/* Header */}
                     <div className="grid grid-cols-12 gap-2 p-3 bg-[#0d2137] border-b border-[#ffd700]/20 text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">
                         <div className="col-span-1">Rank</div>
-                        <div className="col-span-4">Address</div>
-                        <div className="col-span-2 text-right">PnL</div>
+                        <div className="col-span-6">Address</div>
+                        <div className="col-span-3 text-right">PnL</div>
                         <div className="col-span-1 text-center">Games</div>
                         <div className="col-span-1 text-center">Win%</div>
-                        <div className="col-span-2 text-right">Bet</div>
-                        <div className="col-span-1 text-right">Claimed</div>
                     </div>
 
                     {loading && rows.length === 0 ? (
-                        <div className="p-8 text-center">
-                            <div className="text-[8px] font-pixel text-[#a8d8ea]/40 animate-pulse">
-                                Loading from subgraph...
+                        <div className="p-8 flex justify-center">
+                            <div className="relative w-6 h-6">
+                                <div className="absolute inset-0 rounded-full border-2 border-[#ffd700]/10" />
+                                <div className="absolute inset-0 rounded-full border-2 border-t-[#ffd700] animate-spin" />
                             </div>
                         </div>
                     ) : rows.length === 0 ? (
@@ -252,12 +234,12 @@ export default function LeaderboardPage() {
                                         </div>
 
                                         {/* Address */}
-                                        <div className={`col-span-4 font-pixel text-[7px] truncate ${isMe ? 'text-[#ffd700]' : 'text-[#a8d8ea]/70'}`}>
+                                        <div className={`col-span-6 font-pixel text-[7px] truncate ${isMe ? 'text-[#ffd700]' : 'text-[#a8d8ea]/70'}`}>
                                             {isMe ? `${shortAddr(row.address)} (you)` : shortAddr(row.address)}
                                         </div>
 
                                         {/* PnL */}
-                                        <div className={`col-span-2 text-right font-pixel ${isPos ? 'text-[#88d8b0] text-glow-mint' : 'text-[#ff6b6b]'}`}>
+                                        <div className={`col-span-3 text-right font-pixel ${isPos ? 'text-[#88d8b0] text-glow-mint' : 'text-[#ff6b6b]'}`}>
                                             {fmtMon(row.pnl)}
                                         </div>
 
@@ -273,15 +255,9 @@ export default function LeaderboardPage() {
                                             </span>
                                         </div>
 
-                                        {/* Total bet */}
-                                        <div className="col-span-2 text-right text-[#ffd700]/70">
-                                            {fmtMonAbs(row.totalBet)}
-                                        </div>
 
-                                        {/* Total claimed */}
-                                        <div className="col-span-1 text-right text-[#88d8b0]/70">
-                                            {fmtMonAbs(row.totalClaimed)}
-                                        </div>
+
+
                                     </div>
                                 );
                             })}
@@ -289,11 +265,7 @@ export default function LeaderboardPage() {
                     )}
                 </div>
 
-                {rows.length > 0 && (
-                    <div className="text-center text-[7px] font-pixel text-[#a8d8ea]/20">
-                        {rows.length} unique bettors · auto-refreshes every 30s
-                    </div>
-                )}
+
             </div>
         </div>
     );
