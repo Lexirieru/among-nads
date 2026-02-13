@@ -8,4 +8,15 @@ solc_version = "0.8.30"
 eth-rpc-url="https://testnet-rpc.monad.xyz"
 chain_id = 10143
 
+[fmt]
+line_length = 150
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+multiline_func_header = "all"
+quote_style = "double"
+number_underscore = "preserve"
+wrap_comments = false
+
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

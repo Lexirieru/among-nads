@@ -10,7 +10,8 @@ interface IAmongNads {
         Uninitialized, // default — game not yet created
         Open, // LOBBY — bets accepted
         Locked, // ACTION started — no new bets
-        Settled // ENDED — payouts available
+        Settled, // ENDED — payouts available
+        Cancelled // CANCELLED — refunds available
     }
 
     /// @notice Which team a bettor predicts will win.
@@ -25,7 +26,7 @@ interface IAmongNads {
     struct Game {
         uint256 id;
         GameState state;
-        uint64 bettingDeadline; // timestamp after which bets are rejected
+        uint256 bettingDeadline; // timestamp after which bets are rejected
         uint256 totalPool; // sum of all deposits (MON)
         uint256 crewmatesPool; // sum deposited on Crewmates
         uint256 impostorsPool; // sum deposited on Impostors
@@ -44,27 +45,18 @@ interface IAmongNads {
 
     // ── Events ───────────────────────────────────────────────────────────────
 
-    event GameCreated(uint256 indexed gameId, uint64 bettingDeadline);
-    event BetPlaced(
-        uint256 indexed gameId,
-        address indexed bettor,
-        Team team,
-        uint256 amount
-    );
+    event GameCreated(uint256 indexed gameId, uint256 bettingDeadline);
+    event BetPlaced(uint256 indexed gameId, address indexed bettor, Team team, uint256 amount);
     event GameLocked(uint256 indexed gameId);
     event GameSettled(uint256 indexed gameId, Team winningTeam);
-    event PayoutClaimed(
-        uint256 indexed gameId,
-        address indexed bettor,
-        uint256 amount
-    );
+    event PayoutClaimed(uint256 indexed gameId, address indexed bettor, uint256 amount);
     event Deposited(uint256 amount);
-    event PoolSeeded(
-        uint256 indexed gameId,
-        uint256 crewAmount,
-        uint256 impAmount
-    );
+    event PoolSeeded(uint256 indexed gameId, uint256 crewAmount, uint256 impAmount);
     event Swept(uint256 amount);
+    event GameCancelled(uint256 indexed gameId);
+    event RefundClaimed(uint256 indexed gameId, address indexed bettor, uint256 amount);
+    event LobbyDurationUpdated(uint256 newDuration);
+    event SettlementTimeoutUpdated(uint256 newTimeout);
 
     // ── Errors ───────────────────────────────────────────────────────────────
 
@@ -72,12 +64,15 @@ interface IAmongNads {
     error InvalidGameId(uint256 gameId);
     error BetBelowMinimum(uint256 sent, uint256 minimum);
     error BetExceedsMaximum(uint256 sent, uint256 maximum);
-    error BettingDeadlinePassed(uint256 gameId, uint64 deadline);
+    error BettingDeadlinePassed(uint256 gameId, uint256 deadline);
     error AlreadyBet(address bettor);
     error NoBetToClaim(address bettor);
     error AlreadyClaimed(address bettor);
     error TransferFailed();
     error InsufficientHouseBalance(uint256 available, uint256 required);
+    error GameNotCancelled(uint256 gameId);
+    error SettlementTimeoutNotReached(uint256 gameId);
+    error InvalidDuration(uint256 value);
 
     // ── External Functions ───────────────────────────────────────────────────
 
@@ -99,14 +94,25 @@ interface IAmongNads {
     function deposit() external payable;
 
     /// @notice Owner seeds a game's pools from houseBalance (no MON transfer, just accounting).
-    function seedPool(
-        uint256 gameId,
-        uint256 crewAmount,
-        uint256 impAmount
-    ) external;
+    function seedPool(uint256 gameId, uint256 crewAmount, uint256 impAmount) external;
 
     /// @notice Owner withdraws MON from houseBalance.
     function sweep(uint256 amount) external;
+
+    /// @notice Owner cancels a game (Open or Locked). Seeds return to houseBalance.
+    function cancelGame(uint256 gameId) external;
+
+    /// @notice Anyone can cancel a game stuck in Locked state past the settlement timeout.
+    function cancelGameByTimeout(uint256 gameId) external;
+
+    /// @notice Bettors reclaim their bet from a cancelled game.
+    function claimRefund(uint256 gameId) external;
+
+    /// @notice Owner sets the lobby (betting) duration for new games.
+    function setLobbyDuration(uint256 newDuration) external;
+
+    /// @notice Owner sets the settlement timeout for locked games.
+    function setSettlementTimeout(uint256 newTimeout) external;
 
     // ── View Functions ───────────────────────────────────────────────────────
 
@@ -114,10 +120,7 @@ interface IAmongNads {
     function getGame(uint256 gameId) external view returns (Game memory);
 
     /// @notice Lookup a single bettor's record inside a game.
-    function getBet(
-        uint256 gameId,
-        address bettor
-    ) external view returns (Bet memory);
+    function getBet(uint256 gameId, address bettor) external view returns (Bet memory);
 
     /// @notice Whether a game has any bets (totalPool > 0, including seed).
     function hasBets(uint256 gameId) external view returns (bool);
