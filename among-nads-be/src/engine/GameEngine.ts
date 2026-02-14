@@ -65,7 +65,7 @@ const TASK_POOL: TaskDef[] = [
 ];
 
 // How many ACTION ticks a crewmate must spend in the task's room to complete it.
-const TASK_DURATION_TICKS = 4;
+const TASK_DURATION_TICKS = 3;
 
 // ── Sabotage definitions ─────────────────────────────────────────────────────
 // An impostor can trigger a critical sabotage once per ACTION phase.
@@ -99,7 +99,7 @@ const SABOTAGE_OPTIONS: SabotageTarget[] = [
 const SABOTAGE_COOLDOWN_TICKS = 45; // 45s grace → sabotage available earlier for impostor balance
 
 // How many ticks a crewmate must spend in the repair room to fix sabotage.
-const REPAIR_DURATION_TICKS = 8; // harder to repair — gives impostors more sabotage win chance
+const REPAIR_DURATION_TICKS = 8; // easier to repair — balance for crewmates
 
 export class GameEngine {
   public id: string;
@@ -142,12 +142,12 @@ export class GameEngine {
   private readonly MEETING_TIME = 15; // Fast meetings for sim
   private readonly RESET_TIME = 20;
   private readonly MAX_PLAYERS = 10;
-  private readonly SPAWN_INTERVAL = 4; // spawn 1 agent every 4s -> all 10 in ~40s (plenty of buffer)
+  private readonly SPAWN_INTERVAL = 15; // spawn 1 agent every 15s -> all 10 in ~150s (slow drip)
   private spawnCooldown: number = 0; // countdown until next spawn is allowed
 
   // Per-impostor kill cooldown (key = playerId, value = ticks remaining)
   private killCooldowns: Record<string, number> = {};
-  private readonly KILL_COOLDOWN_TICKS = 25; // 25s between kills — faster impostor tempo
+  private readonly KILL_COOLDOWN_TICKS = 45; // 45s between kills — very slow impostor tempo
   private meetingChatCooldown: number = 0; // ticks until next meeting message is allowed
   private meetingChatCount: number = 0; // how many messages sent this meeting
   private savedActionTimer: number = 0; // ACTION time remaining before a meeting interruption
@@ -427,7 +427,7 @@ export class GameEngine {
     crewmates.forEach((p) => {
       // Shuffle task pool and pick 2 or 3 tasks
       const shuffled = [...TASK_POOL].sort(() => 0.5 - Math.random());
-      const count = 3; // 3 tasks per crewmate — harder task win for balance
+      const count = 3; // 3 tasks per crewmate — easier task win for balance
       this.crewTasks[p.id] = shuffled.slice(0, count).map((task) => ({
         task,
         completed: false,
@@ -615,11 +615,11 @@ export class GameEngine {
             t.room === p.room,
         );
 
-        if (targets.length > 0 && Math.random() < 0.015) {
-          // 1.5% chance per tick to kill — faster kills for impostor balance
+        if (targets.length > 0 && Math.random() < 0.04) {
+          // 4% chance per tick to kill — moderate aggression
           const victim = targets[Math.floor(Math.random() * targets.length)];
           this.killPlayer(p.id, victim.id);
-          this.killCooldowns[p.id] = this.KILL_COOLDOWN_TICKS; // 30s cooldown
+          this.killCooldowns[p.id] = this.KILL_COOLDOWN_TICKS; // 40s cooldown
         }
       }
     });
@@ -648,7 +648,7 @@ export class GameEngine {
         }
       } else {
         // Crewmates: 40% chance to correctly suspect an impostor (simulated intuition)
-        if (aliveImpostors.length > 0 && Math.random() < 0.3) {
+        if (aliveImpostors.length > 0 && Math.random() < 0.45) {
           choiceId =
             aliveImpostors[Math.floor(Math.random() * aliveImpostors.length)]
               .id;
@@ -805,7 +805,7 @@ export class GameEngine {
         (p) => p.role === "Impostor" && p.alive,
       );
       // 1.5% chance per tick that an impostor sabotages
-      if (impostorsAlive.length > 0 && Math.random() < 0.03) {
+      if (impostorsAlive.length > 0 && Math.random() < 0.02) {
         this.activeSabotage = { ...this.pick(SABOTAGE_OPTIONS) }; // spread to avoid mutating the const
         this.sabotageTriggered = true;
         this.sabotageRepairTicks = 0;

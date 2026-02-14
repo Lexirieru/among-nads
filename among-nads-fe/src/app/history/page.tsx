@@ -171,7 +171,7 @@ export default function HistoryPage() {
                         <div className="retro-panel overflow-hidden">
                             {/* Table header */}
                             <div className="grid grid-cols-12 gap-2 p-3 bg-[#0d2137] border-b border-[#ffd700]/20 text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">
-                                <div className="col-span-1">Round</div>
+                                <div className="col-span-1">Bet #</div>
                                 <div className="col-span-2">Team</div>
                                 <div className="col-span-2 text-right">Bet</div>
                                 <div className="col-span-2 text-center">Result</div>
@@ -180,9 +180,10 @@ export default function HistoryPage() {
                             </div>
 
                             {loading ? (
-                                <div className="p-6 text-center">
-                                    <div className="text-[8px] font-pixel text-[#a8d8ea]/40 animate-pulse">
-                                        Loading from subgraph...
+                                <div className="p-6 flex justify-center">
+                                    <div className="relative w-6 h-6">
+                                        <div className="absolute inset-0 rounded-full border-2 border-[#ffd700]/10" />
+                                        <div className="absolute inset-0 rounded-full border-2 border-t-[#ffd700] animate-spin" />
                                     </div>
                                 </div>
                             ) : rows.length === 0 ? (

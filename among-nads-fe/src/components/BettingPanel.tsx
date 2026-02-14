@@ -131,7 +131,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
 
     // ── handlers ──
     const handlePlaceBet = () => {
-        if (!selectedTeam || !amount || parseFloat(amount) < 0.001) return;
+        if (!selectedTeam || !amount || parseFloat(amount) < 0.001 || parseFloat(amount) > 0.1) return;
         if (!onChainGameId) return;
         const amountInWei = parseEther(amount);
         const teamValue = selectedTeam === 'Crewmates' ? Team.Crewmates : Team.Impostors;
@@ -197,11 +197,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
     const zeroBalanceWarning = hasZeroMon ? (
         <div className="flex items-center gap-2 p-2.5 bg-[#ffd700]/5 border border-[#ffd700]/20 rounded-sm mb-3">
             <div className="text-[7px] font-pixel text-[#ffd700]">
-                You have 0 MON.{' '}
-                <a href="/faucet" className="underline hover:text-[#ffed4a] transition-colors">
-                    Claim from faucet
-                </a>{' '}
-                to start betting.
+                You have 0 MON. Deposit MON to start betting.
             </div>
         </div>
     ) : null;
@@ -243,7 +239,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                         <div className="p-2.5 bg-[#88d8b0]/5 border border-[#88d8b0]/20 rounded-sm">
                             <div className="flex justify-between items-center mb-2">
                                 <div className="text-[7px] font-pixel text-[#a8d8ea]/50">
-                                    Round #{onChainGameId} — {teamName(userBet.team)}
+                                    Bet #{onChainGameId} — {teamName(userBet.team)}
                                 </div>
                                 <div className="text-[9px] font-pixel text-[#88d8b0] text-glow-mint">
                                     ~{payoutFormatted} <span className="text-[#a8d8ea]/40">MON</span>
@@ -281,7 +277,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                         if (justClaimed) {
                             return (
                                 <div key={payout.gameId} className="p-2.5 bg-[#88d8b0]/5 border border-[#88d8b0]/20 rounded-sm text-center animate-pulse">
-                                    <div className="text-[8px] font-pixel text-[#88d8b0]">Round #{payout.gameId} — Claimed!</div>
+                                    <div className="text-[8px] font-pixel text-[#88d8b0]">Bet #{payout.gameId} — Claimed!</div>
                                 </div>
                             );
                         }
@@ -290,7 +286,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                             <div key={payout.gameId} className="p-2.5 bg-[#88d8b0]/5 border border-[#88d8b0]/20 rounded-sm">
                                 <div className="flex justify-between items-center mb-2">
                                     <div className="text-[7px] font-pixel text-[#a8d8ea]/50">
-                                        Round #{payout.gameId} — {teamName(payout.team)}
+                                        Bet #{payout.gameId} — {teamName(payout.team)}
                                     </div>
                                     <div className="text-[9px] font-pixel text-[#88d8b0]">
                                         {formatEther(BigInt(payout.betAmount))} <span className="text-[#a8d8ea]/40">MON bet</span>
@@ -344,7 +340,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                     </div>
 
                     <div className="text-[9px] font-pixel text-[#ffd700] text-glow-gold animate-pulse uppercase tracking-wider">
-                        Syncing...
+                        Betting...
                     </div>
 
                     <div
@@ -364,7 +360,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                     </div>
                 </div>
                 <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
-                    Round #{onChainGameId}
+                    Bet #{onChainGameId}
                 </div>
                 {claimSection}
             </div>
@@ -398,7 +394,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                     </div>
                 </div>
                 <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
-                    Round #{onChainGameId} — Winner: {teamName(userBet.winningTeam)}
+                    Bet #{onChainGameId} — Winner: {teamName(userBet.winningTeam)}
                 </div>
                 {claimSection}
             </div>
@@ -436,7 +432,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                     </div>
                 </div>
                 <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
-                    Round #{onChainGameId}
+                    Bet #{onChainGameId}
                 </div>
                 {claimSection}
             </div>
@@ -471,7 +467,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
 
                 </div>
                 <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
-                    Round #{onChainGameId}
+                    Bet #{onChainGameId}
                 </div>
                 {claimSection}
             </div>
@@ -499,13 +495,13 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                     </div>
                     {bettingOpensIn > 0 && (
                         <div className="flex items-center gap-2 p-2 bg-[#0d2137]/60 rounded-sm">
-                            <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">Next Round In</div>
+                            <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">Next Game In</div>
                             <div className="text-[9px] font-pixel text-[#88d8b0] text-glow-mint">{formatBetTimer(bettingOpensIn)}</div>
                         </div>
                     )}
                 </div>
                 <div className="text-[7px] font-pixel text-[#a8d8ea]/30 text-center mt-2">
-                    {onChainGameId !== null && onChainGameId !== undefined ? `Round #${onChainGameId}` : 'Waiting for on-chain round...'}
+                    {onChainGameId !== null && onChainGameId !== undefined ? `Bet #${onChainGameId}` : 'Waiting for on-chain game...'}
                 </div>
                 {claimSection}
             </div>
@@ -579,7 +575,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
                             <>
                                 <button
                                     onClick={handlePlaceBet}
-                                    disabled={!bettingOpen || !selectedTeam || !amount || parseFloat(amount) < 0.001 || isPlacingBet || !onChainGameId}
+                                    disabled={!bettingOpen || !selectedTeam || !amount || parseFloat(amount) < 0.001 || parseFloat(amount) > 0.1 || isPlacingBet || !onChainGameId}
                                     className="w-full py-2.5 rounded-sm text-[8px] font-pixel uppercase tracking-wider transition-all
                                         bg-[#ff6b6b] hover:bg-[#ff8a8a] text-[#0a1628]
                                         pixel-border
@@ -610,7 +606,7 @@ export function BettingPanel({ phase, winner, onChainGameId, bettingOpen = false
 
             {/* gameId indicator */}
             <div className="mt-3 text-[7px] font-pixel text-[#a8d8ea]/30 text-center">
-                {onChainGameId !== null && onChainGameId !== undefined ? `Round #${onChainGameId}` : 'Waiting for on-chain round...'}
+                {onChainGameId !== null && onChainGameId !== undefined ? `Bet #${onChainGameId}` : 'Waiting for on-chain game...'}
             </div>
 
             {claimSection}
