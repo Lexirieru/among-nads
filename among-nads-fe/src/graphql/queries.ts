@@ -66,6 +66,27 @@ export const GET_ALL_USER_CLAIMS = `
   }
 `;
 
+/** Get cancelled games */
+export const GET_CANCELLED_GAMES = `
+  query GetCancelledGames {
+    gameCancelleds(orderBy: gameId, orderDirection: desc, first: 50) {
+      gameId
+      timestamp_
+    }
+  }
+`;
+
+/** Get all refund claims by a user */
+export const GET_ALL_USER_REFUNDS = `
+  query GetAllUserRefunds($bettor: String!) {
+    refundClaimeds(where: { bettor: $bettor }, first: 50) {
+      gameId
+      amount
+      timestamp_
+    }
+  }
+`;
+
 /** Leaderboard: all bets + claims across all users */
 export const GET_LEADERBOARD_DATA = `
   query GetLeaderboardData {

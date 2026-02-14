@@ -9,6 +9,8 @@ import {
     GET_USER_BET_HISTORY,
     GET_RECENT_GAMES,
     GET_ALL_USER_CLAIMS,
+    GET_CANCELLED_GAMES,
+    GET_ALL_USER_REFUNDS,
 } from '@/graphql/queries';
 
 const teamName = (t: number) => (t === 0 ? 'Crewmates' : 'Impostors');
@@ -26,7 +28,7 @@ interface HistoryRow {
     amount: string;
     timestamp: string;
     winningTeam: number | null; // null = not settled
-    result: 'win' | 'lose' | 'pending';
+    result: 'win' | 'lose' | 'pending' | 'cancelled' | 'refunded';
     claimed: boolean;
     claimedAmount: string | null;
 }
@@ -35,7 +37,7 @@ export default function HistoryPage() {
     const { address, isConnected } = useAccount();
     const [rows, setRows] = useState<HistoryRow[]>([]);
     const [loading, setLoading] = useState(false);
-    const [stats, setStats] = useState({ wins: 0, losses: 0, pending: 0, totalBet: 0, totalClaimed: 0 });
+    const [stats, setStats] = useState({ wins: 0, losses: 0, pending: 0, cancelled: 0, refunded: 0, totalBet: 0, totalClaimed: 0 });
 
     const fetchHistory = useCallback(async () => {
         if (!address) {
@@ -47,7 +49,7 @@ export default function HistoryPage() {
         const bettor = address.toLowerCase();
 
         try {
-            const [betsData, gamesData, claimsData] = await Promise.all([
+            const [betsData, gamesData, claimsData, cancelledData, refundsData] = await Promise.all([
                 querySubgraph<{
                     betPlaceds: { amount: string; team: string; gameId: string; timestamp_: string }[];
                 }>(GET_USER_BET_HISTORY, { bettor }),
@@ -57,6 +59,12 @@ export default function HistoryPage() {
                 querySubgraph<{
                     payoutClaimeds: { gameId: string; amount: string }[];
                 }>(GET_ALL_USER_CLAIMS, { bettor }),
+                querySubgraph<{
+                    gameCancelleds: { gameId: string; timestamp_: string }[];
+                }>(GET_CANCELLED_GAMES),
+                querySubgraph<{
+                    refundClaimeds: { gameId: string; amount: string }[];
+                }>(GET_ALL_USER_REFUNDS, { bettor }),
             ]);
 
             const settledMap = new Map(
@@ -65,24 +73,37 @@ export default function HistoryPage() {
             const claimMap = new Map(
                 claimsData.payoutClaimeds.map((c) => [c.gameId, c.amount])
             );
+            const cancelledSet = new Set(
+                cancelledData.gameCancelleds.map((c) => c.gameId)
+            );
+            const refundMap = new Map(
+                refundsData.refundClaimeds.map((r) => [r.gameId, r.amount])
+            );
 
-            let wins = 0, losses = 0, pending = 0, totalBet = 0, totalClaimed = 0;
+            let wins = 0, losses = 0, pending = 0, cancelled = 0, refunded = 0, totalBet = 0, totalClaimed = 0;
 
             const history: HistoryRow[] = betsData.betPlaceds.map((bet) => {
                 const team = Number(bet.team);
                 const winningTeam = settledMap.get(bet.gameId) ?? null;
                 const claimedAmount = claimMap.get(bet.gameId) ?? null;
-                let result: 'win' | 'lose' | 'pending' = 'pending';
+                const isCancelled = cancelledSet.has(bet.gameId);
+                const refundAmount = refundMap.get(bet.gameId) ?? null;
+                let result: 'win' | 'lose' | 'pending' | 'cancelled' | 'refunded' = 'pending';
 
-                if (winningTeam !== null) {
+                if (isCancelled) {
+                    result = refundAmount ? 'refunded' : 'cancelled';
+                } else if (winningTeam !== null) {
                     result = team === winningTeam ? 'win' : 'lose';
                 }
 
                 totalBet += Number(formatEther(BigInt(bet.amount)));
                 if (result === 'win') wins++;
                 else if (result === 'lose') losses++;
+                else if (result === 'cancelled') cancelled++;
+                else if (result === 'refunded') refunded++;
                 else pending++;
                 if (claimedAmount) totalClaimed += Number(formatEther(BigInt(claimedAmount)));
+                if (refundAmount) totalClaimed += Number(formatEther(BigInt(refundAmount)));
 
                 return {
                     gameId: bet.gameId,
@@ -91,13 +112,13 @@ export default function HistoryPage() {
                     timestamp: bet.timestamp_,
                     winningTeam,
                     result,
-                    claimed: !!claimedAmount,
-                    claimedAmount,
+                    claimed: !!(claimedAmount || refundAmount),
+                    claimedAmount: claimedAmount || refundAmount,
                 };
             });
 
             setRows(history);
-            setStats({ wins, losses, pending, totalBet, totalClaimed });
+            setStats({ wins, losses, pending, cancelled, refunded, totalBet, totalClaimed });
         } catch (err) {
             console.error('[History] Fetch failed:', err);
         } finally {
@@ -144,7 +165,7 @@ export default function HistoryPage() {
                 ) : (
                     <>
                         {/* Stats */}
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                             <div className="retro-panel p-3 text-center">
                                 <div className="text-sm font-pixel text-[#88d8b0] text-glow-mint">{stats.wins}</div>
                                 <div className="text-[7px] font-pixel text-[#88d8b0]/50 uppercase tracking-wider">Wins</div>
@@ -158,10 +179,14 @@ export default function HistoryPage() {
                                 <div className="text-[7px] font-pixel text-[#ffd700]/50 uppercase tracking-wider">Pending</div>
                             </div>
                             <div className="retro-panel p-3 text-center">
-                                <div className="text-sm font-pixel text-[#a8d8ea]">{stats.totalBet.toFixed(2)}</div>
-                                <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">Total MON Bet</div>
+                                <div className="text-sm font-pixel text-[#c4a0ff]">{stats.cancelled + stats.refunded}</div>
+                                <div className="text-[7px] font-pixel text-[#c4a0ff]/50 uppercase tracking-wider">Refunded</div>
                             </div>
-                            <div className="retro-panel p-3 text-center col-span-2 sm:col-span-1">
+                            <div className="retro-panel p-3 text-center">
+                                <div className="text-sm font-pixel text-[#a8d8ea]">{stats.totalBet.toFixed(2)}</div>
+                                <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">MON Bet</div>
+                            </div>
+                            <div className="retro-panel p-3 text-center">
                                 <div className="text-sm font-pixel text-[#88d8b0]">{stats.totalClaimed.toFixed(2)}</div>
                                 <div className="text-[7px] font-pixel text-[#88d8b0]/50 uppercase tracking-wider">MON Claimed</div>
                             </div>
@@ -234,11 +259,23 @@ export default function HistoryPage() {
                                                 {row.result === 'pending' && (
                                                     <span className="text-[#ffd700]/50 animate-pulse">...</span>
                                                 )}
+                                                {row.result === 'cancelled' && (
+                                                    <span className="text-[#c4a0ff]">CANCELLED</span>
+                                                )}
+                                                {row.result === 'refunded' && (
+                                                    <span className="text-[#c4a0ff]">REFUNDED</span>
+                                                )}
                                             </div>
 
                                             {/* Payout */}
                                             <div className="col-span-2 text-right">
-                                                {row.claimed && row.claimedAmount ? (
+                                                {row.result === 'refunded' && row.claimedAmount ? (
+                                                    <span className="text-[#c4a0ff]">
+                                                        {formatMon(row.claimedAmount)} <span className="text-[#a8d8ea]/30">MON</span>
+                                                    </span>
+                                                ) : row.result === 'cancelled' ? (
+                                                    <span className="text-[#c4a0ff]/50 text-[7px]">Claim Refund</span>
+                                                ) : row.claimed && row.claimedAmount ? (
                                                     <span className="text-[#88d8b0]">
                                                         {formatMon(row.claimedAmount)} <span className="text-[#a8d8ea]/30">MON</span>
                                                     </span>
