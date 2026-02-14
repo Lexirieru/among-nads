@@ -213,20 +213,16 @@ class ContractClient {
    * Settles the current game with the winning team.
    * Fee + seed share auto-return to houseBalance.
    */
-  async settleGame(winner: "Crewmates" | "Impostors"): Promise<void> {
-    if (this.currentGameId === null) {
-      console.warn("[ContractClient] settleGame() skipped — no active gameId");
-      return;
-    }
+  async settleGame(gameId: bigint, winner: "Crewmates" | "Impostors"): Promise<void> {
     const teamValue = winner === "Crewmates" ? Team.Crewmates : Team.Impostors;
     console.log(
-      `[ContractClient] settleGame(${this.currentGameId}, ${winner})...`,
+      `[ContractClient] settleGame(${gameId}, ${winner})...`,
     );
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
       abi: AMONG_NADS_ABI,
       functionName: "settleGame",
-      args: [this.currentGameId, teamValue],
+      args: [gameId, teamValue],
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
     this._gameOnChain = false;

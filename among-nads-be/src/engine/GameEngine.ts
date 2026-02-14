@@ -970,10 +970,10 @@ export class GameEngine {
       : "Impostors";
     const gameId = contractClient.gameId;
 
-    if (contractClient.gameOnChain) {
-      // Game was already seeded+locked → just settle
+    if (contractClient.gameOnChain && gameId !== null) {
+      // Game was already seeded+locked → just settle with captured gameId
       contractClient
-        .settleGame(winningTeam)
+        .settleGame(gameId, winningTeam)
         .catch((err) =>
           console.error("[ContractClient] settleGame failed:", err),
         );
@@ -989,7 +989,7 @@ export class GameEngine {
             return contractClient
               .seedPool(gameId)
               .then(() => contractClient.lockGame(gameId))
-              .then(() => contractClient.settleGame(winningTeam));
+              .then(() => contractClient.settleGame(gameId, winningTeam));
           } else {
             console.log(
               "[ContractClient] No user bets — skipping settle (0 tx)",
