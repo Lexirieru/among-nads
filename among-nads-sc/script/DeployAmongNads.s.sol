@@ -19,18 +19,14 @@ contract DeployAmongNads is Script {
         bytes memory initData = abi.encodeCall(AmongNads.initialize, (deployer));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
-        // 3. Configure game parameters
-        AmongNads game = AmongNads(payable(address(proxy)));
-        uint256 lobbyDuration = uint256(180);
-        uint256 settlementTimeout = uint256(1 hours);
-        game.setLobbyDuration(lobbyDuration);
-        game.setSettlementTimeout(settlementTimeout);
-
         vm.stopBroadcast();
 
+        console.log("block.chainid", block.chainid);
         console.log("AmongNads implementation:", address(impl));
         console.log("AmongNads proxy:", address(proxy));
-        console.log("Lobby duration:", lobbyDuration);
-        console.log("Settlement timeout:", settlementTimeout);
     }
 }
+
+// RUN
+// forge script script/DeployAmongNads.s.sol --broadcast --verify --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/
+// forge script script/DeployAmongNads.s.sol -vvv

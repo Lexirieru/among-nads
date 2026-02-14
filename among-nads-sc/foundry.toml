@@ -5,8 +5,8 @@ libs = ["lib"]
 solc_version = "0.8.30"
 
 # Monad Configuration
-eth-rpc-url="https://testnet-rpc.monad.xyz"
-chain_id = 10143
+eth-rpc-url="https://monad-mainnet.drpc.org"
+chain_id = 143
 
 [fmt]
 line_length = 150
