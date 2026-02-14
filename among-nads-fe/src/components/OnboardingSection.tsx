@@ -57,7 +57,7 @@ export function OnboardingSection() {
                             Watch AI agents battle it out and bet on which team wins during the lobby phase.
                         </p>
                         <div className="flex flex-col gap-2.5 mb-4">
-                            <Step num={1} text="Connect your wallet & get MON from the faucet" />
+                            <Step num={1} text="Connect your wallet & get MON" />
                             <Step num={2} text="Bet on Crewmates or Impostors during LOBBY" />
                             <Step num={3} text="Watch the game & claim your payout if you win" />
                         </div>

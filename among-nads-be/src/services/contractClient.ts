@@ -7,12 +7,12 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-// ── Chain definition (Monad Testnet) ─────────────────────────────────────────
-const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
+// ── Chain definition (Monad Mainnet) ─────────────────────────────────────────
+const monadMainnet = defineChain({
+  id: 143,
+  name: "Monad Mainnet",
   nativeCurrency: { decimals: 18, name: "Monad", symbol: "MON" },
-  rpcUrls: { default: { http: ["https://testnet-rpc.monad.xyz"] } },
+  rpcUrls: { default: { http: ["https://monad-mainnet.drpc.org"] } },
 });
 
 // ── ABI — V2 (Native MON, Refactored) ─────────────────────────────────────────
@@ -94,7 +94,7 @@ class ContractClient {
   private seedImpostors: bigint;
 
   constructor() {
-    const rpcUrl = process.env.RPC_URL || "https://testnet-rpc.monad.xyz";
+    const rpcUrl = process.env.RPC_URL || "https://monad-mainnet.drpc.org";
     const privateKey = process.env.PRIVATE_KEY;
     const contractAddr = process.env.CONTRACT_ADDRESS;
 
@@ -106,12 +106,12 @@ class ContractClient {
 
     this.walletClient = createWalletClient({
       account,
-      chain: monadTestnet,
+      chain: monadMainnet,
       transport: http(rpcUrl),
     });
 
     this.publicClient = createPublicClient({
-      chain: monadTestnet,
+      chain: monadMainnet,
       transport: http(rpcUrl),
     });
 

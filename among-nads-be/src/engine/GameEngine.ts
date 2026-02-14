@@ -65,7 +65,7 @@ const TASK_POOL: TaskDef[] = [
 ];
 
 // How many ACTION ticks a crewmate must spend in the task's room to complete it.
-const TASK_DURATION_TICKS = 3;
+const TASK_DURATION_TICKS = 4;
 
 // ── Sabotage definitions ─────────────────────────────────────────────────────
 // An impostor can trigger a critical sabotage once per ACTION phase.
@@ -99,7 +99,7 @@ const SABOTAGE_OPTIONS: SabotageTarget[] = [
 const SABOTAGE_COOLDOWN_TICKS = 45; // 45s grace → sabotage available earlier for impostor balance
 
 // How many ticks a crewmate must spend in the repair room to fix sabotage.
-const REPAIR_DURATION_TICKS = 8; // easier to repair — balance for crewmates
+const REPAIR_DURATION_TICKS = 10; // harder to repair — balance for crewmates
 
 export class GameEngine {
   public id: string;
@@ -137,7 +137,7 @@ export class GameEngine {
   private commentStreamInterval: NodeJS.Timeout | null = null;
   public phaseTimer: number = 0; // seconds remaining in current phase
   private readonly LOBBY_TIME = 180; // 3 minute lobby
-  private readonly GAME_TIME = 240; // 4 minutes
+  private readonly GAME_TIME = 300; // 5 minutes
   private readonly BET_LOCK_TIME = 120; // lock bets 2 min into ACTION (when timer = GAME_TIME - 120 = 120s left)
   private readonly MEETING_TIME = 15; // Fast meetings for sim
   private readonly RESET_TIME = 20;
@@ -147,7 +147,13 @@ export class GameEngine {
 
   // Per-impostor kill cooldown (key = playerId, value = ticks remaining)
   private killCooldowns: Record<string, number> = {};
-  private readonly KILL_COOLDOWN_TICKS = 45; // 45s between kills — very slow impostor tempo
+
+  // ── Per-game randomised parameters (re-rolled each startGame) ─────────────
+  private gameKillCooldown: number = 25;    // ticks between kills  [15..45]
+  private gameKillChance: number = 0.15;    // chance per tick       [0.08..0.28]
+  private gameMeetingChance: number = 0.30; // body-found chance     [0.15..0.50]
+  private gameVoteAccuracy: number = 0.30;  // crewmate vote accuracy[0.18..0.45]
+  private gameSabotageChance: number = 0.03;// sabotage chance/tick  [0.02..0.06]
   private meetingChatCooldown: number = 0; // ticks until next meeting message is allowed
   private meetingChatCount: number = 0; // how many messages sent this meeting
   private savedActionTimer: number = 0; // ACTION time remaining before a meeting interruption
@@ -381,8 +387,29 @@ export class GameEngine {
     }
   }
 
+  /** Roll a float uniformly in [min, max] */
+  private randRange(min: number, max: number): number {
+    return min + Math.random() * (max - min);
+  }
+
   private startGame() {
     console.log("Starting Game...");
+
+    // Re-roll per-game balance parameters so every game feels different.
+    // Ranges are tuned so the combination is genuinely 50/50 across many games.
+    this.gameKillCooldown   = Math.round(this.randRange(28, 55)); // 28–55s
+    this.gameKillChance     = this.randRange(0.10, 0.18);         // 10–18%
+    this.gameMeetingChance  = this.randRange(0.35, 0.65);         // 35–65% body found
+    this.gameVoteAccuracy   = this.randRange(0.35, 0.55);         // 35–55% correct vote
+    this.gameSabotageChance = this.randRange(0.02, 0.05);         // 2–5%
+    console.log(
+      `[GameEngine] Game params — killCooldown:${this.gameKillCooldown}s ` +
+      `killChance:${(this.gameKillChance*100).toFixed(0)}% ` +
+      `meetingChance:${(this.gameMeetingChance*100).toFixed(0)}% ` +
+      `voteAcc:${(this.gameVoteAccuracy*100).toFixed(0)}% ` +
+      `sabotageChance:${(this.gameSabotageChance*100).toFixed(1)}%`
+    );
+
     this.assignRoles();
     this.assignTasks();
     this.sabotageTriggered = false;
@@ -606,20 +633,24 @@ export class GameEngine {
 
       // Each alive impostor gets a chance to kill per tick
       if (p.isBot && !p.isControlled) {
-        // Find targets in same room
-        const targets = Object.values(this.players).filter(
-          (t) =>
-            t.id !== p.id &&
-            t.role !== "Impostor" &&
-            t.alive &&
-            t.room === p.room,
+        // Find targets in same room — impostor can only kill if target is ALONE
+        // (no other alive players in the room besides the impostor + target)
+        const playersInRoom = Object.values(this.players).filter(
+          (t) => t.alive && t.room === p.room,
         );
+        const targets = playersInRoom.filter(
+          (t) => t.id !== p.id && t.role !== "Impostor",
+        );
+        const witnesses = playersInRoom.filter(
+          (t) => t.id !== p.id && t.role !== "Impostor",
+        );
+        // Only kill when exactly 1 crewmate is in the room (no witnesses)
+        const canKill = witnesses.length === 1;
 
-        if (targets.length > 0 && Math.random() < 0.04) {
-          // 4% chance per tick to kill — moderate aggression
+        if (canKill && targets.length > 0 && Math.random() < this.gameKillChance) {
           const victim = targets[Math.floor(Math.random() * targets.length)];
           this.killPlayer(p.id, victim.id);
-          this.killCooldowns[p.id] = this.KILL_COOLDOWN_TICKS; // 40s cooldown
+          this.killCooldowns[p.id] = this.gameKillCooldown;
         }
       }
     });
@@ -647,8 +678,8 @@ export class GameEngine {
           choiceId = "skip";
         }
       } else {
-        // Crewmates: 40% chance to correctly suspect an impostor (simulated intuition)
-        if (aliveImpostors.length > 0 && Math.random() < 0.45) {
+        // Crewmates: per-game chance to correctly suspect an impostor (simulated intuition)
+        if (aliveImpostors.length > 0 && Math.random() < this.gameVoteAccuracy) {
           choiceId =
             aliveImpostors[Math.floor(Math.random() * aliveImpostors.length)]
               .id;
@@ -676,8 +707,8 @@ export class GameEngine {
       this.map.stopPlayer(targetId);
       console.log(`🔪 ${this.players[killerId].name} killed ${target.name}`);
 
-      if (Math.random() < 0.5) {
-        // 50% chance body is discovered → fewer meetings, impostor advantage
+      if (Math.random() < this.gameMeetingChance) {
+        // per-game chance body is discovered → triggers emergency meeting
         this.triggerMeeting(killerId, targetId);
       }
     }
@@ -799,15 +830,14 @@ export class GameEngine {
       this.sabotageGraceTicks--;
     }
 
-    // ── Trigger sabotage (once per ACTION, after grace period) ──
-    if (!this.sabotageTriggered && this.sabotageGraceTicks <= 0) {
+    // ── Trigger sabotage (multiple per ACTION, 30s cooldown after repair, after grace period) ──
+    if (!this.activeSabotage && this.sabotageGraceTicks <= 0) {
       const impostorsAlive = Object.values(this.players).filter(
         (p) => p.role === "Impostor" && p.alive,
       );
-      // 1.5% chance per tick that an impostor sabotages
-      if (impostorsAlive.length > 0 && Math.random() < 0.02) {
+      // per-game chance that an impostor sabotages
+      if (impostorsAlive.length > 0 && Math.random() < this.gameSabotageChance) {
         this.activeSabotage = { ...this.pick(SABOTAGE_OPTIONS) }; // spread to avoid mutating the const
-        this.sabotageTriggered = true;
         this.sabotageRepairTicks = 0;
         console.log(
           `💥 Sabotage triggered: ${this.activeSabotage.name} (${this.activeSabotage.timer}s)`,
@@ -829,6 +859,7 @@ export class GameEngine {
           console.log(`🔧 Sabotage repaired by ${repairer.name}!`);
           this.activeSabotage = null;
           this.sabotageRepairTicks = 0;
+          this.sabotageGraceTicks = 30; // 30s cooldown before next sabotage
           return; // sabotage cleared, no timer tick
         }
       }
@@ -1110,7 +1141,7 @@ export class GameEngine {
 
     // Commit kill
     target.alive = false;
-    this.killCooldowns[player.id] = this.KILL_COOLDOWN_TICKS;
+    this.killCooldowns[player.id] = this.gameKillCooldown;
 
     // Check win condition immediately? Default loop handles it next tick
   }

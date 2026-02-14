@@ -9,34 +9,34 @@ import {
   injectedWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 
-export const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
+export const monadMainnet = defineChain({
+  id: 143,
+  name: "Monad Mainnet",
   nativeCurrency: {
     decimals: 18,
     name: "Monad",
     symbol: "MON",
   },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: ["https://monad-mainnet.drpc.org"] },
   },
   blockExplorers: {
     default: {
       name: "Monad Explorer",
-      url: "https://testnet.monadexplorer.com",
-      apiUrl: "https://testnet.monadexplorer.com/api",
+      url: "https://monadexplorer.com",
+      apiUrl: "https://monadexplorer.com/api",
     },
   },
-  testnet: true,
+  testnet: false,
   iconUrl: "https://avatars.githubusercontent.com/u/108920141?s=200&v=4",
 });
 
 export const config = getDefaultConfig({
   appName: "Among Nads",
   projectId: "4553a4639c46b13a8f3da08c527a28e5",
-  chains: [monadTestnet],
+  chains: [monadMainnet],
   transports: {
-    [monadTestnet.id]: http(),
+    [monadMainnet.id]: http(),
   },
   ssr: true,
   wallets: [

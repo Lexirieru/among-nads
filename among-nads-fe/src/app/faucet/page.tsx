@@ -23,7 +23,7 @@ export default function FaucetPage() {
                 {/* Page Title */}
                 <div>
                     <h1 className="text-sm font-pixel text-[#ffd700] text-glow-gold uppercase tracking-wider">
-                        Monad Testnet Faucet
+                        Monad Mainnet
                     </h1>
                     <p className="text-[7px] font-pixel text-[#a8d8ea]/40 mt-1">
                         Claim MON tokens to play Among Nads
@@ -36,7 +36,7 @@ export default function FaucetPage() {
                         <img src="/MON_Logos.png" alt="MON" className="w-10 h-10 rounded-full" />
                         <div>
                             <div className="text-[10px] font-pixel text-white">MON</div>
-                            <div className="text-[7px] font-pixel text-[#a8d8ea]/40">Monad Testnet</div>
+                            <div className="text-[7px] font-pixel text-[#a8d8ea]/40">Monad Mainnet</div>
                         </div>
                     </div>
 
@@ -53,11 +53,11 @@ export default function FaucetPage() {
                     <div className="bg-[#0d2137]/60 border border-[#ffd700]/10 rounded-sm p-3 mb-3">
                         <div className="flex justify-between items-center mb-1">
                             <div className="text-[7px] font-pixel text-[#a8d8ea]/50 uppercase tracking-wider">Source</div>
-                            <div className="text-[8px] font-pixel text-[#ffd700]">Official Monad Faucet</div>
+                            <div className="text-[8px] font-pixel text-[#ffd700]">Exchanges / Bridges</div>
                         </div>
                         <div className="text-[7px] font-pixel text-[#a8d8ea]/40 mt-2 leading-relaxed">
                             You need native MON tokens to pay for gas and place bets. 
-                            Claim them from the official testnet faucet.
+                            Get them from supported Exchanges or Bridges.
                         </div>
                     </div>
 
@@ -65,13 +65,13 @@ export default function FaucetPage() {
                     <div className="mt-auto pt-2">
                         {isConnected ? (
                             <a
-                                href="https://testnet.monad.xyz/faucet"
+                                href="https://monad.xyz"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="block w-full py-3 rounded-sm text-[8px] font-pixel uppercase tracking-wider text-center transition-all
                                     bg-[#836ef9] hover:bg-[#9580ff] text-white pixel-border hover:scale-[1.02]"
                             >
-                                Go to Official Faucet
+                                Go to Monad Ecosystem
                             </a>
                         ) : (
                             <ConnectButton.Custom>

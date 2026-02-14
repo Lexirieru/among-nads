@@ -1,6 +1,6 @@
 import { AmongNadsABI } from "./abi/AmongNads";
 
-export const AMONG_NADS_ADDRESS = "0xE1385EC2310809D30dCbe6FCEF29B8b10E323E6D";
+export const AMONG_NADS_ADDRESS = "0x4f33a6C4bA93c0C9C2Cf52768fFE64e5eF844CB1";
 
 export const AMONG_NADS_ABI = AmongNadsABI;
 
